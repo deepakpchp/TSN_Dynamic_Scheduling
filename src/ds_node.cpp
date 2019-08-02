@@ -98,12 +98,18 @@ void node::print(){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		std::cout<<this->adj_link[index]->get_link_id()<<"  ";
 		std::cout<<this->node_id<<" -> "<<this->adj_node[index]->node_id<<"  ";
-		char* gcl = this->adj_link[index]->get_gcl();
+		int** gcl = this->adj_link[index]->get_gcl();
 		for (int index2 = 0; index2 < HYPER_PERIOD; index2++){
-			std::bitset<8> x(gcl[index2]);
-			std::cout<<x<<" ";
+			for(int index3 = 0; index3 < QUEUES_PER_PORT; index3++){
+				std::cout<<gcl[index2][index3]<<" ";
+			}
+			std::cout<<"\t";
 		}
 		std::cout<<std::endl;
 	}
 	std::cout<<std::endl;
+}
+
+int node::get_node_id(){
+	return this->node_id;
 }

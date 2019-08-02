@@ -18,6 +18,7 @@ class node {
         void connect(node*);
         void disconnect(int);
 		void print();
+		int get_node_id();
         ~node();
 
 };

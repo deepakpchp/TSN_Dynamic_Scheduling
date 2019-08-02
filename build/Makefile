@@ -27,9 +27,9 @@ default: scheduler
 # To create the executable file count we need the object files
 # countwords.o, counter.o, and scanner.o:
 #
-scheduler: ds_scheduler.o ds_node.o ds_link.o
+scheduler: ds_scheduler.o ds_node.o ds_link.o ds_flow.o
 	@cd obj;\
-		$(CC) $(CFLAGS) ds_scheduler.o  ds_node.o ds_link.o -o $(BIN_PATH)/scheduler
+		$(CC) $(CFLAGS) ds_scheduler.o  ds_node.o ds_link.o ds_flow.o -o $(BIN_PATH)/scheduler
 	@cd ..
 	@echo "generated $@"
 
@@ -46,6 +46,10 @@ ds_node.o:  $(SRC_PATH)/ds_node.cpp
 
 ds_link.o:  $(SRC_PATH)/ds_link.cpp 
 	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_link.cpp -o $(OBJ_PATH)/ds_link.o -I $(INCLUDE_PATH)
+	@echo "compiled $@"
+
+ds_flow.o:  $(SRC_PATH)/ds_flow.cpp 
+	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_flow.cpp -o $(OBJ_PATH)/ds_flow.o -I $(INCLUDE_PATH)
 	@echo "compiled $@"
 
 
