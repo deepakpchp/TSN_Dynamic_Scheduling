@@ -1,14 +1,15 @@
 #include <iostream>
 #include <ds_flow.h>
-#include <ds_link.h>
 
+extern link* link_list[];
 using namespace std;
-flow::flow(int src_node_id, int dst_node_id, int deadline, int size){
+flow::flow(int src_node_id, int dst_node_id, int deadline, int size, int period){
 	this->flow_id = this->id_flow++;
 	this->src_node_id = src_node_id;
 	this->dst_node_id = dst_node_id;
 	this->deadline = deadline;
 	this->size = size;
+	this->period = period;
 	this->route = new int[HYPER_PERIOD];
 	this->route_queue_assignment = new int[HYPER_PERIOD] ;
 	for (int index = 0; index < HYPER_PERIOD; index++){
@@ -38,6 +39,10 @@ void flow::set_size(int size){
 	this->size = size;
 }
 
+void flow::set_period(int period){
+	this->period = period;
+}
+
 void flow::set_route(int *route, int route_length){
 	this->route_length = route_length;
 	for (int index = 0; index < route_length; index++){
@@ -50,6 +55,7 @@ void flow::set_route_queue_assignment(int *route_queue_assignment, int route_len
 	for (int index = 0; index < route_length; index++){
 		this->route_queue_assignment[index] = route_queue_assignment[index];
 	}
+	this->is_scheduled = true;
 }
 
 int flow::get_flow_id(){
@@ -76,6 +82,10 @@ int flow::get_size(){
 	return this->size;
 }
 
+int flow::get_period(){
+	return this->period;
+}
+
 int* flow::get_route(){
 	return this->route;
 }
@@ -89,31 +99,31 @@ int flow::get_route_length(){
 }
 
 void flow::print(){
-	cout<<"Flow_id :"<<this->get_flow_id()<<endl;
-	cout<<this->src_node_id<<" -> "<<this->dst_node_id<<" Scheduled_Status:"<<this->get_is_scheduled()<<" Deadline:"<<this->get_deadline()<<" Size:"<<this->get_size()<<endl;
+	cout<<"Flow_id: "<<this->get_flow_id()<<endl;
+	cout<<"From node: "<<this->src_node_id<<" to "<<this->dst_node_id<<endl;
+	cout<<"Deadline: "<<this->get_deadline()<<", Size: "<<this->get_size()<<", Period: "<<this->get_period() <<endl;
+    cout<<"Scheduled_Status: "<<this->get_is_scheduled()<<endl;
 	if(this->get_is_scheduled()){
 		int route_length = this->get_route_length();
 		int *route = this->get_route();
 		int *route_queue_assignment = this->get_route_queue_assignment();
-		cout<<"Route Length : "<<route_length<<" Route: ";
+		cout<<"Route Length: "<<route_length<<endl<<"Route: ";
 		for (int index = 0; index < this->route_length; index ++){
-			cout<<route[index]<<"q("<<route_queue_assignment[index]<<") "<<endl;
+			cout<<route[index]<<":q("<<route_queue_assignment[index]<<") ";
 		}
 		
 	}
 	cout<<endl;
+	cout<<endl;
 }
 
-void flow::assign_route_and_queue(int *route, int *route_queue_assignment, queue_reservation_state state[], int route_length){
+void flow::assign_route_and_queue(int *route, int *route_queue_assignment, link::queue_reservation_state state[], int route_length){
 	this->set_route(route, route_length);
 	this->set_route_queue_assignment(route_queue_assignment, route_length);
 
 	for(int index = 0; index < route_length; index++){
-		if (route[-1 != index]){
-			link_list[route[index]].update_glc(index, route_queue_assignment[index], state[index]) 
+		if (-1 != route[index]){
+			link_list[route[index]]->update_gcl(index, route_queue_assignment[index], state[index]); 
 		}
 	}
-
-
-
 }

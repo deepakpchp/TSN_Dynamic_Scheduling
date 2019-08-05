@@ -29,7 +29,6 @@ class link{
 		int get_src_node_id();
 		int get_dst_node_id();
 		int** get_gcl();
-		int** get_gcl();
-		void update_gcl(int time_slot, int route_queue_assignment[], queue_reservation_state state[])
+		void update_gcl(int time_slot, int route_queue_assignment, queue_reservation_state state);
 };
 #endif

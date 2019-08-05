@@ -2,6 +2,8 @@
 #include <bitset>
 #include <iostream>
 
+link* link_list[100];
+int num_of_links =  0;
 node::node(node_type type, int node_id){
 	this->type = type;
 	this->node_id = node_id;
@@ -36,6 +38,7 @@ void node::connect(node* adj_node){
 	if(this->adj_node_count < MAX_PORTS){
 		this->adj_node[this->adj_node_count] = adj_node;
 		this->adj_link[this->adj_node_count] = new link(this->node_id, adj_node->node_id);
+		link_list[num_of_links++] = this->adj_link[this->adj_node_count];
 		this->adj_node_count++;
 		if(adj_node->adj_node_count < MAX_PORTS){
 			adj_node->adj_node[adj_node->adj_node_count] = this;
@@ -101,9 +104,9 @@ void node::print(){
 		int** gcl = this->adj_link[index]->get_gcl();
 		for (int index2 = 0; index2 < HYPER_PERIOD; index2++){
 			for(int index3 = 0; index3 < QUEUES_PER_PORT; index3++){
-				std::cout<<gcl[index2][index3]<<" ";
+				std::cout<<gcl[index2][index3];
 			}
-			std::cout<<"\t";
+			std::cout<<" ";
 		}
 		std::cout<<std::endl;
 	}

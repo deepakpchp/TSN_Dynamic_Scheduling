@@ -1,6 +1,6 @@
 #ifndef DS_FLOW_H
 #define DS_FLOW_H
-
+#include <ds_link.h>
 
 class flow{
 	private:
@@ -10,17 +10,19 @@ class flow{
 		int dst_node_id;
 		int deadline;
 		int size;
+		int period;
 		int* route;
 		int* route_queue_assignment;
 		int route_length;
 	public:
 		static int id_flow;
-		flow(int src_node_id, int dst_node_id, int deadline, int length);
+		flow(int src_node_id, int dst_node_id, int deadline, int length, int period);
 		void set_is_scheduled(bool is_scheduled);
 		void set_src_node_id(int src_node_id);
 		void set_dst_node_id(int dst_node_id);
 		void set_deadline(int deadline);
 		void set_size(int length);
+		void set_period(int period);
 		void set_route(int *route, int route_length);
 		void set_route_queue_assignment(int *route_queue_assignment, int route_length);
 
@@ -30,11 +32,12 @@ class flow{
 		int get_dst_node_id();
 		int get_deadline();
 		int get_size();
+		int get_period();
 		int* get_route();
 		int* get_route_queue_assignment();
 		int get_route_length();
 
 		void print();
-		void assign_route_and_queue(int *route, int *route_queue_assignment, int route_length);
+		void assign_route_and_queue(int *route, int *route_queue_assignment, link::queue_reservation_state state[], int route_length);
 };
 #endif

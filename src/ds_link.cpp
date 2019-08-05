@@ -1,4 +1,5 @@
 #include <ds_link.h>
+
 void link::set_link_id(int link_id){
 	this->link_id = link_id;
 }
@@ -40,8 +41,7 @@ link::link(int src_node_id, int dst_node_id){
 	}
 }
 
-void update_gcl(int time_slot, int route_queue_assignment[], queue_reservation_state state[])
-	this->gcl[time_slot][]
-
+void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_reservation_state state){
+	this->gcl[time_slot][route_queue_assignment] = state;
 }
 
