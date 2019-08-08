@@ -105,7 +105,12 @@ void node::print(){
 		int** gcl = this->adj_link[index]->get_gcl();
 		for (int index2 = 0; index2 < HYPER_PERIOD; index2++){
 			for(int index3 = QUEUES_PER_PORT-1; index3 >= 0; index3--){
-				std::cout<<gcl[index2][index3];
+                if (link::FREE == gcl[index2][index3]){
+				    std::cout<<"-";
+                } 
+                else{
+				    std::cout<<gcl[index2][index3];
+                }
 			}
 			std::cout<<" ";
 		}

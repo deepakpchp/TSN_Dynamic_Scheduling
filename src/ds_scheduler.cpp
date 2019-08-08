@@ -8,41 +8,34 @@
 
 using namespace std;
 
+node** node_list;
 int link::id_link = 0;
 int flow::id_flow = 0;
 int main(){
 
 	configuration config("../input.txt");
 	config.read_configuration();
+    node_list = new node*[config.get_num_of_nodes()];
+    for (int index = 0; index < config.get_num_of_nodes(); index++){
+        auto node_type = config.get_node_type(index); 
+        if  (node_type == "ES"){
+            node_list[index] = new node(node::END_SYSTEM, index);
+        } else if (node_type == "NS" ){
+            node_list[index] = new node(node::NETWORK_SWITCH, index);
+        }
+        else{
+            cout<<"In else ";
+            cout<<node_type<<endl;
+        }
 
-	node* node_list[20];
-
-	node_list[0] = new node(node_type::END_SYSTEM, 0);
-	node_list[1] = new node(node_type::NETWORK_SWITCH, 1);
-	node_list[2] = new node(node_type::END_SYSTEM, 2);
-	node_list[3] = new node(node_type::NETWORK_SWITCH, 3);
-	node_list[4] = new node(node_type::END_SYSTEM, 4);
-	node_list[5] = new node(node_type::NETWORK_SWITCH, 5);
-	node_list[6] = new node(node_type::END_SYSTEM, 6);
-	node_list[7] = new node(node_type::NETWORK_SWITCH, 7);
-	node_list[8] = new node(node_type::END_SYSTEM, 8);
-	node_list[9] = new node(node_type::END_SYSTEM, 9);
-
-	node_list[0]->connect(node_list[1]);
-	node_list[1]->connect(node_list[2]);
-	node_list[1]->connect(node_list[3]);
-	node_list[3]->connect(node_list[4]);
-	node_list[3]->connect(node_list[5]);
-	node_list[3]->connect(node_list[7]);
-	node_list[5]->connect(node_list[6]);
-	node_list[7]->connect(node_list[8]);
-	node_list[7]->connect(node_list[9]);
-	node_list[7]->connect(node_list[5]);
+    }
 
 
-
-
-
+    for (int index = 0; index < config.get_num_of_connection(); index++){
+        int* connection = config.get_connection(index);
+        cout<<connection[0]<<connection[1];
+        node_list[connection[0]]->connect(node_list[connection[1]]);
+    }
 
 	for(int index = 0; index < 10; index++){
 		node_list[index]->print();
@@ -52,7 +45,7 @@ int main(){
 	flow_list[0] = new flow(node_list[8]->get_node_id(), node_list[0]->get_node_id(), 4, 2, 4);
 	flow_list[1] = new flow(node_list[8]->get_node_id(), node_list[0]->get_node_id(), 6, 2, 8);
 
-	int route[4] = {15, 11,5, 1};
+	int route[4] = {17, 13, 5, 1};
 	int route_queue_assignment[4] = {7, 7, 7, 7};
 	link::queue_reservation_state state[4] = {link::OPEN, link::OPEN, link::OPEN, link::OPEN};
 	flow_list[0]->assign_route_and_queue(route, route_queue_assignment, state, 4);
@@ -64,10 +57,8 @@ int main(){
 	for(int index = 0; index < 10; index++){
 		node_list[index]->print();
 	}
-
-//	flow_list[0]
-
-	return 0;
+	
+    return 0;
 }
 
 
