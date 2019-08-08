@@ -43,6 +43,7 @@ void node::connect(node* adj_node){
 		if(adj_node->adj_node_count < MAX_PORTS){
 			adj_node->adj_node[adj_node->adj_node_count] = this;
 			adj_node->adj_link[adj_node->adj_node_count] = new link(adj_node->node_id, this->node_id);
+			link_list[num_of_links++] = adj_node->adj_link[adj_node->adj_node_count];
 			adj_node->adj_node_count++;
 		}
 		else{
@@ -99,18 +100,17 @@ void node::disconnect(int delete_node_id){
 
 void node::print(){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
-		std::cout<<this->adj_link[index]->get_link_id()<<"  ";
-		std::cout<<this->node_id<<" -> "<<this->adj_node[index]->node_id<<"  ";
+		std::cout<<this->adj_link[index]->get_link_id()<<"\t";
+		std::cout<<this->node_id<<" -> "<<this->adj_node[index]->node_id<<"\t";
 		int** gcl = this->adj_link[index]->get_gcl();
 		for (int index2 = 0; index2 < HYPER_PERIOD; index2++){
-			for(int index3 = 0; index3 < QUEUES_PER_PORT; index3++){
+			for(int index3 = QUEUES_PER_PORT-1; index3 >= 0; index3--){
 				std::cout<<gcl[index2][index3];
 			}
 			std::cout<<" ";
 		}
 		std::cout<<std::endl;
 	}
-	std::cout<<std::endl;
 }
 
 int node::get_node_id(){
