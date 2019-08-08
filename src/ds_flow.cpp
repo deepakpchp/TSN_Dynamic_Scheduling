@@ -123,7 +123,15 @@ void flow::assign_route_and_queue(int *route, int *route_queue_assignment, link:
 
 	for(int index = 0; index < route_length; index++){
 		if (-1 != route[index]){
-			link_list[route[index]]->update_gcl(index, route_queue_assignment[index], state[index]); 
+            if (link::OPEN == state[index]){
+                for (int frame_index = 0; frame_index < size; frame_index++){
+			        link_list[route[index]]->update_gcl(index+frame_index, route_queue_assignment[index], state[index]); 
+                }
+
+            }
+            else{
+			    link_list[route[index]]->update_gcl(index, route_queue_assignment[index], state[index]); 
+            }
 		}
 	}
 }

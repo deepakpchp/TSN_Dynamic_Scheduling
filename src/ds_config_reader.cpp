@@ -1,16 +1,9 @@
-#include <ds_node.h>
-#include <ds_link.h>
-#include <ds_flow.h>
+#include <fstream>
+#include <algorithm>
+#include <iostream>
+#include <ds_config_reader.h>
 
-class configuration{
-	private:
-		int num_of_nodes;
-		node* node_list;
-
-		int num_of_flows;
-		flow* flow_list;
-	public:
-		void read_configuration(std::string input);
+int configuration::read_configuration(){
 		std::ifstream cFile ("../input.txt");
 		if (cFile.is_open())
 		{
@@ -24,11 +17,55 @@ class configuration{
 				auto name = line.substr(0, delimiterPos);
 				auto value = line.substr(delimiterPos + 1);
 				std::cout << name << " " << value << '\n';
+				if(name == "num_of_nodes"){
+					this->num_of_nodes = stoi(value);
+					std::cout<<"kehooo "<<value<<std::endl;
+				} else if(name == "node_type"){
+					if (0 > this->num_of_nodes){
+						std::cerr<<"num_of_nodes not configured properly. Please check the input.txt for the configuration"<<std::endl;
+						return -1;
+					}
+					std::string line[10];
+//					auto delimiterPos = value.find(
+					auto node_type = value.substr(1, value.size()-2);
+					std::cout<<node_type;
+					const char delim = ',';
+					std::vector<std::string> out;
+					tokenize(node_type, delim, out);
+					int index = 0;
+					for (auto &s: out) {
+						line[index] = s;
+						std::cout << line[index++] << '\n';
+					}
+
+				}
+
 			}
 
 		}
 		else {
 			std::cerr << "Couldn't open config file for reading.\n";
 		}
-
+	return 0;
 }
+
+
+configuration::configuration(std::string input_file_name){
+	this->num_of_nodes = -1;
+	this->input_file_name = input_file_name;
+}
+
+void configuration::tokenize(std::string const &str, const char delim,
+			std::vector<std::string> &out)
+{
+	size_t start;
+	size_t end = 0;
+
+	while ((start = str.find_first_not_of(delim, end)) != std::string::npos)
+	{
+		end = str.find(delim, start);
+		out.push_back(str.substr(start, end - start));
+	}
+}
+
+
