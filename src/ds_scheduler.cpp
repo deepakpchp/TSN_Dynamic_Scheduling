@@ -44,7 +44,7 @@ int main(){
 	}
 
 	flow* flow_list[3];
-	flow_list[0] = new flow(node_list[8]->get_node_id(), node_list[0]->get_node_id(), 4, 1, 4);
+	flow_list[0] = new flow(node_list[8]->get_node_id(), node_list[0]->get_node_id(), 4, 2, 4);
 	flow_list[1] = new flow(node_list[8]->get_node_id(), node_list[0]->get_node_id(), 6, 2, 8);
 
 	int route[5] = {8, 7, 3, 1, 9};
@@ -56,6 +56,9 @@ int main(){
 		flow_list[index]->print();
 	}
 
+	for(int index = 0; index < 10; index++){
+		node_list[index]->print();
+	}
 
 //	flow_list[0]
 
