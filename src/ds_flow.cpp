@@ -45,13 +45,26 @@ void flow::set_period(int period){
 
 void flow::set_route(int *route, int route_length){
 	this->route_length = route_length;
+	this->route = new int[this->route_length];
 	for (int index = 0; index < route_length; index++){
 		this->route[index] = route[index];
 	}
 }
 
+
+void flow::set_state(link::queue_reservation_state *state, int route_length){
+	this->route_length = route_length;
+	this->state = new link::queue_reservation_state[this->route_length];
+	for (int index = 0; index < route_length; index++){
+		this->state[index] = state[index];
+	}
+}
+
+
+
 void flow::set_route_queue_assignment(int *route_queue_assignment, int route_length){
 	this->route_length = route_length;
+	this->route_queue_assignment = new int[this->route_length];
 	for (int index = 0; index < route_length; index++){
 		this->route_queue_assignment[index] = route_queue_assignment[index];
 	}
@@ -117,8 +130,9 @@ void flow::print(){
 	cout<<endl;
 }
 
-void flow::assign_route_and_queue(int *route, int *route_queue_assignment, link::queue_reservation_state state[], int route_length){
+void flow::assign_route_and_queue(int *route, int *route_queue_assignment, link::queue_reservation_state *state, int route_length){
 	this->set_route(route, route_length);
+	this->set_state(state, route_length);
 	this->set_route_queue_assignment(route_queue_assignment, route_length);
 
 	for(int index = 0; index < route_length; index++){

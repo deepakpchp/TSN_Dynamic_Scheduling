@@ -12,6 +12,7 @@ class flow{
 		int size;
 		int period;
 		int* route;
+		link::queue_reservation_state* state;
 		int* route_queue_assignment;
 		int route_length;
 	public:
@@ -24,6 +25,7 @@ class flow{
 		void set_size(int length);
 		void set_period(int period);
 		void set_route(int *route, int route_length);
+		void set_state(link::queue_reservation_state *state, int route_length);
 		void set_route_queue_assignment(int *route_queue_assignment, int route_length);
 
 		int get_flow_id();
