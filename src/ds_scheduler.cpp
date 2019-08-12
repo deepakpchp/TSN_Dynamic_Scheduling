@@ -13,8 +13,9 @@ int flow::id_flow = 0;
 int main(){
 
 	configuration config("../input.txt");
-	config.read_configuration();
-
+	config.read_node_config();
+	config.read_flow_config();
+	return (0);
 	node* node_list[20];
 
 	node_list[0] = new node(node_type::END_SYSTEM, 0);

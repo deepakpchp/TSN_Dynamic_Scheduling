@@ -14,7 +14,10 @@ class configuration{
 		flow* flow_list;
 		std::string input_file_name;
 	public:
-		int read_configuration();
+		int read_node_config();
+		int read_flow_config();
+
 		configuration(std::string input_file_name);
+
 		void tokenize(std::string const &str, const char delim, std::vector<std::string> &out);
 };

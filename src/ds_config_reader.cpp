@@ -3,7 +3,7 @@
 #include <iostream>
 #include <ds_config_reader.h>
 
-int configuration::read_configuration(){
+int configuration::read_node_config(){
 		std::ifstream cFile ("../input.txt");
 		if (cFile.is_open())
 		{
@@ -55,6 +55,9 @@ configuration::configuration(std::string input_file_name){
 	this->input_file_name = input_file_name;
 }
 
+
+
+
 void configuration::tokenize(std::string const &str, const char delim,
 			std::vector<std::string> &out)
 {
@@ -69,3 +72,27 @@ void configuration::tokenize(std::string const &str, const char delim,
 }
 
 
+int configuration::read_flow_config(){
+		flow* flow_list[3];
+		std::ifstream cFile ("../flows.txt");
+		if (cFile.is_open())
+		{
+			std::string line;
+			while(getline(cFile, line)){
+				line.erase(std::remove_if(line.begin(), line.end(), isspace),
+						line.end());
+				if(line[0] == '#' || line.empty())
+					continue;
+				const char delim = ',';
+				std::vector<std::string> out;
+				auto flow = line.substr(1, line.size()-2);
+				tokenize(flow, delim, out);
+				std::cout<<"Out is :"<<out[0];
+			}
+
+		}
+		else {
+			std::cerr << "Couldn't open config file for reading.\n";
+		}
+	return 0;
+}
