@@ -13,8 +13,8 @@ class link{
 		int** gcl;
 	public:
 		enum queue_reservation_state{
-			OPEN,
 			WAITING,
+			OPEN,
 			FREE
 		};
 		static int id_link;

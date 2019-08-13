@@ -51,7 +51,6 @@ void flow::set_route(int *route, int route_length){
 	}
 }
 
-
 void flow::set_state(link::queue_reservation_state *state, int route_length){
 	this->route_length = route_length;
 	this->state = new link::queue_reservation_state[this->route_length];
@@ -68,7 +67,7 @@ void flow::set_route_queue_assignment(int *route_queue_assignment, int route_len
 	for (int index = 0; index < route_length; index++){
 		this->route_queue_assignment[index] = route_queue_assignment[index];
 	}
-	this->is_scheduled = true;
+	this->set_is_scheduled(true);
 }
 
 int flow::get_flow_id(){
@@ -107,8 +106,29 @@ int* flow::get_route_queue_assignment() {
 	return this->route_queue_assignment;
 }
 
+link::queue_reservation_state* flow::get_state(){
+	return this->state;
+}
+
 int flow::get_route_length(){
 	return this->route_length;
+}
+
+
+void flow::delete_route(){
+	this->route_length = 0;
+	delete(this->route);
+}
+
+void flow::delete_state(){
+	this->route_length = 0;
+	delete(this->state);
+}
+
+void flow::delete_route_queue_assignment(){
+	this->route_length = 0;
+	delete(this->route_queue_assignment);
+	this->set_is_scheduled(false);
 }
 
 void flow::print(){
@@ -143,9 +163,45 @@ void flow::assign_route_and_queue(int *route, int *route_queue_assignment, link:
                 }
 
             }
-            else{
+            else if (link::WAITING == state[index])  {
 			    link_list[route[index]]->update_gcl(index, route_queue_assignment[index], state[index]); 
             }
+			else{
+				std::cerr<<"Trying to do invalid reservation in GCL for the flow id: "<<this->get_flow_id()<<std::endl;
+				std::cerr<<"Invalid queue state is: "<<state[index]<<std::endl;
+			}
 		}
 	}
+	this->set_is_scheduled(true);
+}
+
+void flow::remove_route_and_queue_assignment(){
+
+	int* route = this->get_route();
+	link::queue_reservation_state* state = this->get_state();
+	int* route_queue_assignment = this->get_route_queue_assignment();
+
+	for(int index = 0; index < this->get_route_length(); index++){
+		if (-1 != route[index]){
+			if (link::OPEN == state[index]){
+				for (int frame_index = 0; frame_index < size; frame_index++){
+					link_list[route[index]]->update_gcl(index+frame_index, route_queue_assignment[index], link::FREE); 
+				}
+
+			}
+			else if (link::WAITING == state[index])  {
+				link_list[route[index]]->update_gcl(index, route_queue_assignment[index], link::FREE); 
+			}
+			else{
+				std::cerr<<"Trying to free invalid reservation in GCL for the flow id: "<<this->get_flow_id()<<std::endl;
+			}
+		}
+		else{
+			std::cerr<<"Invalid link id: "<<route[index]<<" in the route of the flow id: "<<this->get_flow_id()<<std::endl;
+		}
+	}
+
+	this->delete_route();
+	this->delete_state();
+	this->delete_route_queue_assignment();
 }

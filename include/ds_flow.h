@@ -37,9 +37,16 @@ class flow{
 		int get_period();
 		int* get_route();
 		int* get_route_queue_assignment();
+		link::queue_reservation_state* get_state();
 		int get_route_length();
+
+		void delete_route();
+		void delete_route_queue_assignment();
+		void delete_state();
+
 
 		void print();
 		void assign_route_and_queue(int *route, int *route_queue_assignment, link::queue_reservation_state state[], int route_length);
+		void remove_route_and_queue_assignment();
 };
 #endif

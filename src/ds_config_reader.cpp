@@ -18,7 +18,6 @@ int configuration::read_node_config(){
 				auto delimiterPos = line.find("=");
 				auto name = line.substr(0, delimiterPos);
 				auto value = line.substr(delimiterPos + 1);
-				std::cout << name << " " << value << '\n';
 				if(name == "num_of_nodes"){
 					this->num_of_nodes = stoi(value);
 					this->node_type = new std::string[this->num_of_nodes];
@@ -26,7 +25,6 @@ int configuration::read_node_config(){
 					for (int index = 0; index < this->num_of_nodes; index++){
 						this->connection[index] = new int[2];
 					}
-					std::cout<<"keasdhooo "<<value<<std::endl;
 				} 
                 else if(name == "node_type"){
 					if (0 > this->num_of_nodes){
@@ -39,7 +37,6 @@ int configuration::read_node_config(){
 					int index = 0;
 					for (auto &s: splited_node_type) {
 						this->node_type[index++] = s;
-					//	std::cout << s << '\n';
 					}
 
 				}
@@ -129,8 +126,10 @@ int configuration::read_flow_config(){
 			while(getline(cFile, line)){
 				line.erase(std::remove_if(line.begin(), line.end(), isspace),
 						line.end());
-				if(line[0] == '#' || line.empty())
+				if(line[0] == '#' || line.empty()){
+					this->num_of_flows--;
 					continue;
+				}
 				const char delim = ',';
 				std::vector<std::string> tokens;
 				auto flow = line.substr(1, line.size()-2);
@@ -179,7 +178,7 @@ int configuration::read_flow_config(){
 							this->queue_state[flow_index][token_index] = link::OPEN;
 						}
 						else if("WAITING" == reservation_details[2]){
-							this->queue_state[flow_index][token_index] = link::OPEN;
+							this->queue_state[flow_index][token_index] = link::WAITING;
 						}
 						else{
 							std::cerr << "Queue state in flows not configured properly!!\nIgnoring the reservation\n";
@@ -192,7 +191,6 @@ int configuration::read_flow_config(){
 					}
 				}
 				flow_index++;	
-				std::cout<<std::endl;
 			}
 
 		}
