@@ -11,6 +11,7 @@ class flow{
 		int deadline;
 		int size;
 		int period;
+
 		int* route;
 		link::queue_reservation_state* state;
 		int* route_queue_assignment;

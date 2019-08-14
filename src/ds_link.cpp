@@ -12,6 +12,15 @@ void link::set_src_node_id(int src_node_id){
 int link::get_src_node_id(){
 	return this->src_node_id;
 }
+
+int link::get_open_slots(){
+	return this->open_slots;
+}
+
+int link::get_waiting_slots(){
+	return this->waiting_slots;
+}
+
 void link::set_dst_node_id(int dst_node_id){
 	this->dst_node_id = dst_node_id;
 }
@@ -39,10 +48,43 @@ link::link(int src_node_id, int dst_node_id){
 			this->gcl[index][index2] = FREE;
 		}
 	}
+	this->open_slots = HYPER_PERIOD;
+	this->waiting_slots = (HYPER_PERIOD * (NUM_OF_QUEUES_FOR_TT -1));
+
 }
 
 void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_reservation_state state){
-	if(state != this->gcl[time_slot][route_queue_assignment]){
+	if (time_slot >= HYPER_PERIOD){
+		std::cerr<<"Invalid Time Slot for reservation.\n";
+		std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
+		exit(0);
+	}
+	if (state != this->gcl[time_slot][route_queue_assignment]){
+		if (route_queue_assignment < (QUEUES_PER_PORT - NUM_OF_QUEUES_FOR_TT)){
+			std::cerr<<"Trying to assign BE queue for TT traffic.\n";
+			std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
+			exit(0);
+		}
+		if(link::OPEN == state){
+			this->open_slots--;
+		}
+		else if (link::WAITING == state){
+			this->waiting_slots--;
+		}
+		else if (link::FREE == state){
+			if(link::OPEN == this->gcl[time_slot][route_queue_assignment]){
+				this->open_slots++;
+			}
+			else if (link::WAITING == this->gcl[time_slot][route_queue_assignment]){
+				this->waiting_slots++;
+			}
+		}
+		else {
+			std::cerr<<"Trying to assign invalid state to GCL.\n";
+			std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
+			exit(0);
+
+		}
 		this->gcl[time_slot][route_queue_assignment] = state;
 	}
 	else {
@@ -50,6 +92,7 @@ void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_res
 		std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
 		exit(0);
 	}
+
 }
 
 

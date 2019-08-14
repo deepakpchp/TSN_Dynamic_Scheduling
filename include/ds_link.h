@@ -4,6 +4,7 @@
 #define HYPER_PERIOD 8
 #define QUEUES_PER_PORT 8
 #define GCL_INIT 0x1F
+#define NUM_OF_QUEUES_FOR_TT 3
 
 class link{
 	private:
@@ -11,6 +12,8 @@ class link{
 		int src_node_id;
 		int dst_node_id;
 		int** gcl;
+		int open_slots;
+		int waiting_slots;
 	public:
 		enum queue_reservation_state{
 			WAITING,
@@ -28,6 +31,8 @@ class link{
 		int get_link_id();
 		int get_src_node_id();
 		int get_dst_node_id();
+		int get_open_slots();
+		int get_waiting_slots();
 		int** get_gcl();
 		void update_gcl(int time_slot, int route_queue_assignment, queue_reservation_state state);
 };

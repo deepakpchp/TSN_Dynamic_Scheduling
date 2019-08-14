@@ -13,6 +13,9 @@ flow** flow_list;
 extern link* link_list[];
 extern int num_of_links;
 
+link*** conn_matrix;
+
+
 int link::id_link = 0;
 int flow::id_flow = 0;
 
@@ -22,6 +25,18 @@ int get_link_id(int src_node_id, int dst_node_id);
 
 int read_and_configure_nodes(configuration* config){
 	config->read_node_config();
+
+	conn_matrix = new link**[config->get_num_of_nodes()];
+	for (int index = 0; index < config->get_num_of_nodes(); index++){
+		conn_matrix[index] = new link*[config->get_num_of_nodes()];
+	}
+	
+    for (int r_index = 0; r_index < config->get_num_of_nodes(); r_index++){
+    	for (int c_index = 0; c_index < config->get_num_of_nodes(); c_index++){
+			conn_matrix[r_index][c_index] = NULL;
+		}
+	} 	
+
     node_list = new node*[config->get_num_of_nodes()];
     for (int index = 0; index < config->get_num_of_nodes(); index++){
         auto node_type = config->get_node_type(index); 
@@ -37,10 +52,10 @@ int read_and_configure_nodes(configuration* config){
 
     }
 
-
     for (int index = 0; index < config->get_num_of_connection(); index++){
         int* connection = config->get_connection(index);
         node_list[connection[0]]->connect(node_list[connection[1]]);
+
     }
 	return 0;
 }
@@ -136,11 +151,11 @@ int main(){
 	for(int index = 0; index < config.get_num_of_nodes(); index++){
 		node_list[index]->print();
 	}
-	
+/*	
 	for (int index = 0; index < config.get_num_of_flows()-1; index++){
 		delete_flow_reservation(index);
 	}
-
+*/
 	cout<<endl<<endl;
 	for(int index = 0; index < config.get_num_of_flows(); index++){
 		flow_list[index]->print();
@@ -149,7 +164,24 @@ int main(){
 	for(int index = 0; index < config.get_num_of_nodes(); index++){
 		node_list[index]->print();
 	}
-	
+
+	cout<<endl;
+    for (int r_index = 0; r_index < config.get_num_of_nodes(); r_index++){
+    	for (int c_index = 0; c_index < config.get_num_of_nodes(); c_index++){
+			if( NULL != conn_matrix[r_index][c_index]){
+				int src_id = conn_matrix[r_index][c_index]->get_src_node_id();
+				int dst_id = conn_matrix[r_index][c_index]->get_dst_node_id();
+				int open_slots = conn_matrix[r_index][c_index]->get_open_slots();
+				int waiting_slots = conn_matrix[r_index][c_index]->get_waiting_slots();
+				
+				cout<<dst_id<<":"<<open_slots<<":"<<waiting_slots<<"\t";
+			}
+			else{
+				cout<<"-\t";
+			}
+		}
+		cout<<endl<<endl;
+	} 	
 
     return 0;
 }
