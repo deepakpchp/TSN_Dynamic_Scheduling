@@ -22,6 +22,8 @@ int flow::id_flow = 0;
 int read_and_configure_nodes(configuration* config);
 int read_and_configure_flows(configuration* config);
 int get_link_id(int src_node_id, int dst_node_id);
+int schedule_flow(int flow_index);
+int do_reservation(flow* flow, int* route, int route_length);
 
 int read_and_configure_nodes(configuration* config){
 	config->read_node_config();
@@ -151,11 +153,11 @@ int main(){
 	for(int index = 0; index < config.get_num_of_nodes(); index++){
 		node_list[index]->print();
 	}
-/*	
-	for (int index = 0; index < config.get_num_of_flows()-1; index++){
+	
+	for (int index = 0; index < config.get_num_of_flows(); index++){
 		delete_flow_reservation(index);
 	}
-*/
+
 	cout<<endl<<endl;
 	for(int index = 0; index < config.get_num_of_flows(); index++){
 		flow_list[index]->print();
@@ -171,10 +173,11 @@ int main(){
 			if( NULL != conn_matrix[r_index][c_index]){
 				int src_id = conn_matrix[r_index][c_index]->get_src_node_id();
 				int dst_id = conn_matrix[r_index][c_index]->get_dst_node_id();
-				int open_slots = conn_matrix[r_index][c_index]->get_open_slots();
-				int waiting_slots = conn_matrix[r_index][c_index]->get_waiting_slots();
+				int open_slots = conn_matrix[r_index][c_index]->get_open_slots_count();
+				int waiting_slots = conn_matrix[r_index][c_index]->get_waiting_slots_count();
 				
-				cout<<dst_id<<":"<<open_slots<<":"<<waiting_slots<<"\t";
+//				cout<<dst_id<<":"<<open_slots<<":"<<waiting_slots<<"\t";
+				cout<<src_id<<":"<<dst_id<<"\t";
 			}
 			else{
 				cout<<"-\t";
@@ -183,6 +186,59 @@ int main(){
 		cout<<endl<<endl;
 	} 	
 
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		node_list[index]->print();
+	}
+
+	
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if(!flow_list[index]->get_is_scheduled()){
+			flow_list[index]->print();
+			if (schedule_flow(index) != 0){
+				cerr<<"Unnable to schedule the below mentioned flow\n";
+				flow_list[index]->print();
+			}
+		}
+	}
+
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		node_list[index]->print();
+	}
+
     return 0;
 }
 
+int schedule_flow(int flow_index){
+	flow* flow_to_schedule = flow_list[flow_index];
+
+	//int* route = get_route();
+	int route[2][5] = {{8, 7, 3, 1, 0},
+	{9, 7, 3, 5, 6}};
+	do_reservation(flow_to_schedule, route[flow_index], 5);
+}
+
+
+int do_reservation(flow* flow, int* route, int route_length){
+	int period = flow->get_period();
+	int size = flow->get_size();
+
+	int* flow_transmition_slot = new int[HYPER_PERIOD/period];
+	int* old_flow_transmition_slot = new int[HYPER_PERIOD/period];
+	for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+		flow_transmition_slot[period_index] = (period * (period_index));
+	}
+	for (int node_index = 0; node_index < (route_length - 1); node_index++){
+		link* link_p = conn_matrix[route[node_index]][route[node_index+1]];
+		int *reserved_queue_index = new int[HYPER_PERIOD/period];
+
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+			old_flow_transmition_slot[period_index] = flow_transmition_slot[period_index];
+		}
+
+		link_p->do_slot_allocation(flow_transmition_slot, reserved_queue_index,period, size);
+
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+			cout<<flow_transmition_slot[period_index]<<":"<<reserved_queue_index[period_index]<<endl;
+		}
+	}
+}

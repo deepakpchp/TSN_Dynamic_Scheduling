@@ -117,16 +117,19 @@ int flow::get_route_length(){
 
 void flow::delete_route(){
 	this->route_length = 0;
+	this->route = NULL;
 	delete(this->route);
 }
 
 void flow::delete_state(){
 	this->route_length = 0;
+	this->state = NULL;
 	delete(this->state);
 }
 
 void flow::delete_route_queue_assignment(){
 	this->route_length = 0;
+	this->route_queue_assignment = NULL;
 	delete(this->route_queue_assignment);
 	this->set_is_scheduled(false);
 }

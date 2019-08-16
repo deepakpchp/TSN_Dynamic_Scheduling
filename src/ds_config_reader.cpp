@@ -145,7 +145,7 @@ int configuration::read_flow_config(){
 				}
 
 				if("True" == tokens[5]){
-					//if((tokens.size()-6)%stoi(tokens[4]) != 0){
+					//if((tokens.size()-6)%stoi(tokens[4]) != 0)
 					if(0){
 						std::cerr << "Flow reservation not configured properly for the flow :"<<flow_index<<std::endl;
 						std::cerr<<"Tokens size :"<<tokens.size();
