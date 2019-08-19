@@ -1,4 +1,4 @@
 #{src_id,dst_id,dedline,size,period}
 {8,0,4,1,4,True,7:7:OPEN,3:7:OPEN,1:7:OPEN,0:7:OPEN,7:7:OPEN,3:7:OPEN,1:7:OPEN,0:7:OPEN}
 #{8,4,6,3,8,True,7:6:WAITING,7:6:OPEN,3:7:OPEN,4:7:OPEN}
-{9,6,6,1,8,False}
+{8,4,6,1,8,False}

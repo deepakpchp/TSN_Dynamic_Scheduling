@@ -2,7 +2,8 @@
 #include <bitset>
 #include <iostream>
 
-extern link*** conn_matrix;
+extern link*** conn_link_matrix;
+extern int** conn_matrix;
 link* link_list[100];
 int num_of_links =  0;
 node::node(node_type type, int node_id){
@@ -39,13 +40,16 @@ void node::connect(node* adj_node){
 	if(this->adj_node_count < MAX_PORTS){
 		this->adj_node[this->adj_node_count] = adj_node;
 		this->adj_link[this->adj_node_count] = new link(this->node_id, adj_node->node_id);
-		conn_matrix[this->get_node_id()][adj_node->get_node_id()] = this->adj_link[this->adj_node_count];
+		conn_link_matrix[this->get_node_id()][adj_node->get_node_id()] = this->adj_link[this->adj_node_count];
+		conn_matrix[this->get_node_id()][adj_node->get_node_id()] = 1;
+
 		link_list[num_of_links++] = this->adj_link[this->adj_node_count];
 		this->adj_node_count++;
 		if(adj_node->adj_node_count < MAX_PORTS){
 			adj_node->adj_node[adj_node->adj_node_count] = this;
 			adj_node->adj_link[adj_node->adj_node_count] = new link(adj_node->node_id, this->node_id);
-			conn_matrix [adj_node->get_node_id()][this->get_node_id()] = adj_node->adj_link[adj_node->adj_node_count];
+			conn_link_matrix [adj_node->get_node_id()][this->get_node_id()] = adj_node->adj_link[adj_node->adj_node_count];
+			conn_matrix [adj_node->get_node_id()][this->get_node_id()] = 1;
 			link_list[num_of_links++] = adj_node->adj_link[adj_node->adj_node_count];
 			adj_node->adj_node_count++;
 		}
