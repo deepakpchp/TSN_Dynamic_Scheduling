@@ -6,6 +6,15 @@ extern link*** conn_link_matrix;
 extern int** conn_matrix;
 link* link_list[100];
 int num_of_links =  0;
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
 node::node(node_type type, int node_id){
 	this->type = type;
 	this->node_id = node_id;
@@ -15,12 +24,30 @@ node::node(node_type type, int node_id){
 	}
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
 node::~node(){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		this->disconnect(this->adj_node[index]->node_id);
 	}
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
 void node::connect(node* adj_node){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		if (this->adj_node[index] == adj_node){
@@ -65,6 +92,15 @@ void node::connect(node* adj_node){
 	}
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
 void node::disconnect(int delete_node_id){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		if(this->adj_node[index]->node_id == delete_node_id){
@@ -108,6 +144,15 @@ void node::disconnect(int delete_node_id){
 
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
 void node::print(){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		std::cout<<this->adj_link[index]->get_link_id()<<"\t";
@@ -128,6 +173,15 @@ void node::print(){
 	}
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
 int node::get_node_id(){
 	return this->node_id;
 }

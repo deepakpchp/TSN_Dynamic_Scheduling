@@ -17,10 +17,12 @@ class configuration{
 		int num_of_flows;
 		int** flow_info;
 		bool* reservation_availability;
+
+		int** assigned_time_slot;
 		int** route;
 		int** route_queue_assignment;
 		link::queue_reservation_state** queue_state;
-		int* route_length;
+		int* reservation_length;
 
 
 	public:
@@ -39,9 +41,10 @@ class configuration{
 		int* get_flow_info(int flow_index);
 		int get_num_of_flows();		
 		bool get_reservation_availability(int index);
+		int* get_assigned_time_slot(int index);
 		int* get_route(int index);
 		int* get_route_queue_assignment(int index);
 		link::queue_reservation_state* get_queue_state(int index);
-		int get_route_length(int index);
+		int get_reservation_length(int index);
 
 };

@@ -36,6 +36,7 @@ class link{
 		int get_waiting_slots_count();
 		int** get_gcl();
 		void update_gcl(int time_slot, int route_queue_assignment, queue_reservation_state state);
-		int do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_index, int period, int size);
+		int do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_index, 
+				int size, int period, int deadline);
 };
 #endif
