@@ -3,7 +3,9 @@
 
 #include <ds_link.h>
 
+#define MAX_NODES 10
 #define MAX_PORTS 10
+
 class node {
     private:
         int node_id;

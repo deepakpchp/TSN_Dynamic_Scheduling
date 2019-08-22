@@ -328,8 +328,11 @@ int schedule_flow(int flow_index){
 	gen_tmp_conn_matrix(tmp_conn_matrix, flow_to_schedule);
     route router;
     int* route_t = NULL;
+	int src_node_id = flow_to_schedule->get_src_node_id();
+	int dst_node_id = flow_to_schedule->get_dst_node_id();
+
     int route_length = 0;
-    route_length = router.get_route(tmp_conn_matrix, flow_to_schedule->get_src_node_id(), flow_to_schedule->get_dst_node_id(), &route_t );
+    route_length = router.get_route(tmp_conn_matrix, src_node_id, dst_node_id, &route_t );
 	int ret_val = 0;
 	ret_val = do_reservation(flow_to_schedule, route_t, route_length);
 
