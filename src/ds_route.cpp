@@ -23,7 +23,7 @@ int route::get_route(int** graph, int src, int dst, int** route)
 	bool processedSet[V]; // processedSet[i] will true if vertex i is included in shortest
 							// path tree or shortest distance from src to i is finalized
 
-	// Initialize all distances as INFINITE and processedSet[] as false, set all values in path array to -1
+	//Initialize all distances as INFINITE and processedSet[] as false, set all values in path array to -1
 	for (int i = 0; i < V; i++)
 	{
 		dist[i] = INT_MAX, processedSet[i] = false, path[i] = -1;
@@ -57,7 +57,9 @@ int route::get_route(int** graph, int src, int dst, int** route)
 			break;
 		}
 	}
-
+	if(INT_MAX == dist[dst]){
+		return -1;
+	}
     *route = new int[dist[dst] + 1];
     int route_index = dist[dst];
 

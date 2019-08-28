@@ -253,9 +253,12 @@ void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* rout
 	for(int index = 0; index < reservation_length; index++){
 		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) && (assigned_time_slot[index] >= 0)){
             if (link::OPEN == state[index]){
-                for (int frame_index = 0; frame_index < size; frame_index++){
-			        link_list[route[index]]->update_gcl(assigned_time_slot[index] +frame_index, route_queue_assignment[index], state[index]); 
-                }
+				/*TODO Should all the instance of Transmission be stored in flow or only the first 
+				  instance of the Transmission in each link ?*/
+			    link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], state[index]); 
+               // for (int frame_index = 0; frame_index < size; frame_index++){
+			   //     link_list[route[index]]->update_gcl(assigned_time_slot[index] +frame_index, route_queue_assignment[index], state[index]); 
+               // }
             }
             else if (link::WAITING == state[index])  {
 			    link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], state[index]); 
@@ -291,9 +294,7 @@ void flow::remove_route_and_queue_assignment(){
 	for(int index = 0; index < this->get_reservation_length(); index++){
 		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) && (assigned_time_slot[index] >= 0)){
 			if (link::OPEN == state[index]){
-				for (int frame_index = 0; frame_index < size; frame_index++){
-					link_list[route[index]]->update_gcl(assigned_time_slot[index]+frame_index, route_queue_assignment[index], link::FREE); 
-				}
+					link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], link::FREE); 
 
 			}
 			else if (link::WAITING == state[index])  {

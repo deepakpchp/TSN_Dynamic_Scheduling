@@ -185,3 +185,17 @@ Return:
 int node::get_node_id(){
 	return this->node_id;
 }
+
+
+/***************************************************************************************************
+class: node 
+Function Name: get_adj_node_count 
+
+Description: Returns the number of adjecent nodes of the calling node object
+
+Return: 0 if no adjecent nodes else number of adj of nodes
+***************************************************************************************************/
+int node::get_adj_node_count(){
+	return this->adj_node_count;
+}
+

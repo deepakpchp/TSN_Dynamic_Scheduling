@@ -28,6 +28,9 @@ int schedule_flow(int flow_index);
 int do_reservation(flow* flow, int* route, int route_length);
 void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled);
 void print_conn_link_matrix_details(configuration* config_p);
+int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** route, 
+		int route_length[]);
+link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete);
 
 
 /***************************************************************************************************
@@ -150,7 +153,7 @@ int read_and_configure_flows(configuration* config){
 				int link_id	= get_link_id(link_src_node_id, route_nodes[route_index]); 
 				if(-1 == link_id){
 					std::cerr << "Couldn't find the link for src_node_id: "<<link_src_node_id;
-					std::cerr << " and dst_node_if: "<<route_nodes[route_index]<<std::endl;
+					std::cerr << " and dst_node_id: "<<route_nodes[route_index]<<std::endl;
 					return -1;
 
 				}
@@ -187,7 +190,8 @@ Return:
 int get_link_id(int src_node_id, int dst_node_id){
 
 	for (int index = 0; index < num_of_links; index++){
-		if((src_node_id == link_list[index]->get_src_node_id()) && (dst_node_id == link_list[index]->get_dst_node_id())){
+		if((src_node_id == link_list[index]->get_src_node_id()) && 
+				(dst_node_id == link_list[index]->get_dst_node_id())){
 			return index;
 		}
 
@@ -261,7 +265,7 @@ int main(){
 			int ret_val = 0;
 			ret_val = schedule_flow(index);
 			if (SUCCESS != ret_val){
-				ERROR("Unable to schedule the below mentioned flow\n");
+				ERROR("Unnable to schedule the below mentioned flow\n");
 				flow_list[index]->print();
 			}
 			else {
@@ -269,6 +273,10 @@ int main(){
 				flow_list[index]->print();
 			}
 		}
+	}
+
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		flow_list[index]->print();
 	}
 
 	for(int index = 0; index < config.get_num_of_nodes(); index++){
@@ -289,6 +297,9 @@ Description:
 Return:
 ***************************************************************************************************/
 void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled){
+	/* 1) Delete all the nodes with only one connection*/
+	/* 2) Remove all the links that dont have enough free slots*/
+	/* 3) TODO */
 	for (int r_index=0; r_index < g_num_of_nodes; r_index++){
 		for (int c_index=0; c_index < g_num_of_nodes; c_index++){
 			if(NULL !=  conn_link_matrix[r_index][c_index]){
@@ -300,6 +311,115 @@ void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled){
 			}
 		}
 	}
+}
+
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete){
+	
+	link* tmp_link[route_length] = {NULL};
+	int num_of_links = 0;
+
+	for (int index = 0; index < route_length-1; index++){
+		int src_node_id = route[index];
+		int dst_node_id = route[index+1];
+		
+		node* src_node = node_list[src_node_id];
+		node* dst_node = node_list[dst_node_id];
+		if (index == 0 && 1 == src_node->get_adj_node_count()){
+			continue;
+		}
+
+		if (index == route_length-2 && 1 == dst_node->get_adj_node_count()){
+			continue;
+		}
+
+		tmp_link[num_of_links++] = conn_link_matrix[src_node_id][dst_node_id];
+		
+	}
+
+	link* ret_link = NULL;
+	for (int index = 0; index < num_of_links; index++){
+		if (NULL == ret_link && tmp_link[index] != link_not_to_delete){
+			ret_link = tmp_link[index];
+			continue;
+		}
+		if((ret_link->get_open_slots_count() < tmp_link[index]->get_open_slots_count())
+			&& tmp_link[index] != link_not_to_delete){
+			ret_link = tmp_link[index];
+		}
+	}
+
+	cout<<endl;
+	return ret_link;
+}
+
+/***************************************************************************************************
+Function Name: get_k_shortest_paths
+
+Description: This function will return K_SHORTEST_PATH shortest paths for source node to destination
+			 node from the given connectivity matrix. For every new path discovery, a most desired 
+			 link will be deleted in the connectivity matrix.
+
+Return: Number of discovered paths if any otherwise 0
+***************************************************************************************************/
+int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** k_paths, 
+		int route_length[]){
+
+	route router;
+	*k_paths = new int*[K_SHORTEST_PATH];
+	for (int index = 0; index < K_SHORTEST_PATH; index++){
+		(*k_paths)[index] = NULL;
+	}
+
+	int num_of_paths = 0;
+
+	int src_node_id = -1;
+	int dst_node_id = -1; 
+	link* link_not_to_delete = NULL;
+	link* link_to_delete = NULL;;
+	for (int index = 0; index < K_SHORTEST_PATH; index++){
+		int ret_val = router.get_route(conn_matrix, src_id, dst_id, &(*k_paths)[index]);
+		if (ret_val <= 0){
+			if (0 == index){
+				ERROR("No path with enough resource exist between source:"<<src_id<<
+						" and dst"<<dst_id);
+				return num_of_paths;
+			}
+
+			link_not_to_delete = link_to_delete;
+		}
+		else{
+			link_not_to_delete = NULL;
+			route_length[num_of_paths++] = ret_val;
+		}
+			
+		/*This function will return the a link which is most desirable to delete in the discovred 
+		  route based on the configured weightage of diffrent parameters such as number of free 
+		  slots
+		  most number of free consecutive slots etc.*/
+		link_to_delete = get_link_to_detele_in_cm((*k_paths)[index], route_length[index]
+				, link_not_to_delete);
+		/*Update the conn matrix*/
+		
+		if (NULL == link_to_delete){
+			break;
+		}
+
+		src_node_id = link_to_delete->get_src_node_id();
+		dst_node_id = link_to_delete->get_dst_node_id();
+		
+
+		conn_matrix[src_node_id][dst_node_id] = 0;
+	}
+	return num_of_paths;
 }
 
 
@@ -316,8 +436,8 @@ int schedule_flow(int flow_index){
 	flow* flow_to_schedule = flow_list[flow_index];
 
 	//int* route = get_route();
-    // int route[2][5] = {{8, 7, 3, 1, 0},
-    // {9, 7, 3, 5, 6}};
+	// int route[2][5] = {{8, 7, 3, 1, 0},
+	// {9, 7, 3, 5, 6}};
 
 
 	int** tmp_conn_matrix =  new int*[g_num_of_nodes] ;
@@ -326,22 +446,34 @@ int schedule_flow(int flow_index){
 	}
 
 	gen_tmp_conn_matrix(tmp_conn_matrix, flow_to_schedule);
-    route router;
-    int* route_t = NULL;
 	int src_node_id = flow_to_schedule->get_src_node_id();
 	int dst_node_id = flow_to_schedule->get_dst_node_id();
 
-    int route_length = 0;
-    route_length = router.get_route(tmp_conn_matrix, src_node_id, dst_node_id, &route_t );
-	int ret_val = 0;
-	ret_val = do_reservation(flow_to_schedule, route_t, route_length);
+	int** k_paths = NULL;
+	int route_length[K_SHORTEST_PATH] = {0};
 
-	if (SUCCESS != ret_val){
-		return FAILURE;
+	int num_of_paths = 0;
+	/*Get the k shortest paths */
+	num_of_paths = get_k_shortest_paths(tmp_conn_matrix, src_node_id, dst_node_id, 
+			&k_paths, route_length);
+
+//	for(int index = 0; index < 3; index++){
+//		flow_list[index]->print();
+//	}
+	cout<<"Num of paths: "<<num_of_paths<<endl;
+	for (int index = 0; index < num_of_paths; index++){
+		int ret_val = 0;
+		ret_val = do_reservation(flow_to_schedule, k_paths[index], route_length[index]);
+		if(SUCCESS == ret_val){
+			return SUCCESS;
+		}
+
+		delete(k_paths[index]);
 	}
 
+	delete(k_paths);
 
-    return SUCCESS;
+	return FAILURE;
 }
 
 
@@ -359,7 +491,7 @@ int do_reservation(flow* flow, int* route, int route_length){
 	int size = flow->get_size();
 	int deadline = flow->get_deadline();
 	
-	int reservation_detail[route_length-1][HYPER_PERIOD/period];
+	int slot_reservation_detail[route_length-1][HYPER_PERIOD/period];
 	int reserved_queue_index[route_length-1][HYPER_PERIOD/period];
 	int* flow_transmition_slot = new int[HYPER_PERIOD/period];
 	int old_flow_transmition_slot[route_length-1][HYPER_PERIOD/period];
@@ -368,17 +500,30 @@ int do_reservation(flow* flow, int* route, int route_length){
 		flow_transmition_slot[period_index] = (period * (period_index));
 	}
 
+	/*Try to perform reservation on all the links along the given route*/
 	for (int node_index = 0; node_index < (route_length - 1); node_index++){
 		link* link_p = conn_link_matrix[route[node_index]][route[node_index+1]];
 
 		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
-			old_flow_transmition_slot[node_index][period_index] = flow_transmition_slot[period_index];
+			old_flow_transmition_slot[node_index][period_index] 
+				= flow_transmition_slot[period_index];
 		}
 		int ret_val;
 
 		ret_val = link_p->do_slot_allocation(flow_transmition_slot, 
 				reserved_queue_index[node_index], size, period, deadline);
+		
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+			int best_case_deadline 
+				= flow_transmition_slot[period_index] + (route_length - 1) - (node_index +1);
+			if(best_case_deadline > (deadline + (period * period_index))){
+				LOG("Unnable to meet the deadline:"<<deadline<<" for the flow:"<<flow->get_flow_id()
+				    <<" best case scenario was of first frame reaching dst was @:"
+					<<best_case_deadline);
+				return FAILURE;
 
+			}
+		}
 		if (SUCCESS != ret_val){
 			LOG("Unnable to allocate resource on the link:"<<link_p->get_link_id()<<
 				" for the flow: "<<flow->get_flow_id());
@@ -386,37 +531,60 @@ int do_reservation(flow* flow, int* route, int route_length){
 		}
 
 		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
-			reservation_detail[node_index][period_index] = flow_transmition_slot[period_index];
+			slot_reservation_detail[node_index][period_index] = flow_transmition_slot[period_index];
 		}
 		
 	}
 
-	int assigned_time_slot[HYPER_PERIOD];
-	int queue_assignment[HYPER_PERIOD];
-	link::queue_reservation_state state[HYPER_PERIOD];
-	int route_nodes[HYPER_PERIOD];
+	/*Once the reservation on all the links along the route is successful, update the corresponding 
+	 flow and the Gate Control List*/
+	int assigned_time_slot[deadline * size * (HYPER_PERIOD/period)];
+	int queue_assignment[deadline * size * (HYPER_PERIOD/period)];
+	link::queue_reservation_state state[deadline * size * (HYPER_PERIOD/period)];
+	int route_nodes[deadline * size * (HYPER_PERIOD/period)];
 	int reservation_length = 0;
 
 
 	for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
 		for (int node_index = 0; node_index <  (route_length - 1); node_index++){
-			for (int index = 1; index < reservation_detail[node_index][period_index] - old_flow_transmition_slot[node_index][period_index]; index++){
-				assigned_time_slot[reservation_length] = (old_flow_transmition_slot[node_index][period_index] + index -1);
-				route_nodes[reservation_length] = get_link_id(route[node_index], route[node_index+1]);
-				queue_assignment[reservation_length] = reserved_queue_index[node_index][period_index];
+			for (int index = 1; index < slot_reservation_detail[node_index][period_index] 
+					- old_flow_transmition_slot[node_index][period_index]; index++){
+
+				assigned_time_slot[reservation_length] = 
+					(old_flow_transmition_slot[node_index][period_index] + index -1);
+
+				route_nodes[reservation_length] 
+					= get_link_id(route[node_index], route[node_index+1]);
+
+				queue_assignment[reservation_length] 
+					= reserved_queue_index[node_index][period_index];
+
 				state[reservation_length] = link::WAITING;
 				reservation_length++;
 			}
 
+			/*TODO Should all the instance of Transmission be stored in flow or only the first 
+			  instance of the Transmission in each link ?*/
+//			for(int index = 0; index < 1; index++){
 			for(int index = 0; index < size; index++){
-				assigned_time_slot[reservation_length] = ( reservation_detail[node_index][period_index] + index -1);
-				route_nodes[reservation_length] = get_link_id(route[node_index], route[node_index+1]);
-				queue_assignment[reservation_length] = reserved_queue_index[node_index][period_index];
+
+				assigned_time_slot[reservation_length] 
+					= ( slot_reservation_detail[node_index][period_index] + index -1);
+
+				route_nodes[reservation_length] 
+					= get_link_id(route[node_index], route[node_index+1]);
+
+				queue_assignment[reservation_length] 
+					= reserved_queue_index[node_index][period_index];
+
 				state[reservation_length] = link::OPEN;
 				reservation_length++;
 			}
 		}
 	}
-	flow->assign_route_and_queue(assigned_time_slot, route_nodes, queue_assignment, state, reservation_length);
+	
+	flow->assign_route_and_queue(assigned_time_slot
+			, route_nodes, queue_assignment, state, reservation_length);
+
     return SUCCESS;
 }

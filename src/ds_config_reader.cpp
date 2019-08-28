@@ -1,6 +1,6 @@
+#include <ds.h>
 #include <fstream>
 #include <algorithm>
-#include <iostream>
 #include <ds_config_reader.h>
 #include <ds_node.h>
 
@@ -85,7 +85,7 @@ Return:
 int configuration::reset_reserv_config(int flow_index){
 	if(flow_index > this->num_of_flows){
 		std::cerr << "Trying to reset the reservation of a flow that doesn't exist!!\n";
-		return (-1);
+		return (FAILURE);
 	}
 
 	this->reservation_availability[flow_index] = false;
@@ -95,7 +95,7 @@ int configuration::reset_reserv_config(int flow_index){
 	delete(this->route[flow_index]);
 	delete(this->route_queue_assignment[flow_index]);
 	delete(this->queue_state[flow_index]);
-	return 0;
+	return SUCCESS;
 }
 
 /***************************************************************************************************
@@ -145,6 +145,7 @@ int configuration::read_flow_config(){
 				tokenize(flow, delim, tokens);
 				if(tokens.size() < 6){
 					std::cerr << "Flow not configured properly!!\nIgnoring the flow\n";
+					this->num_of_flows--;
 					continue;
 				}
 				int * ptr = new int[5];
@@ -152,7 +153,8 @@ int configuration::read_flow_config(){
 				for (unsigned int token_index = 0; token_index < 5; token_index++){
 					this->flow_info[flow_index][token_index] = stoi(tokens[token_index]); 
 				}
-
+				
+				this->reservation_availability[flow_index] = false;
 				if("True" == tokens[5]){
 					//if((tokens.size()-6)%stoi(tokens[4]) != 0)
 					if(0){
@@ -176,11 +178,11 @@ int configuration::read_flow_config(){
 						tokenize(tokens[token_index+6], delim_2, reservation_details);
 						if(4 != reservation_details.size()){
 							std::cerr << "Reservation in flows not configured properly!!\nIgnoring the reservation\n";
-							if(-1 == this->reset_reserv_config(flow_index)){
+							if(SUCCESS != this->reset_reserv_config(flow_index)){
 								std::cerr<<"Critical Error. Exiting Program\n";
 								exit(0);
 							}
-							continue;
+							break;
 						}
 
 						this->assigned_time_slot[flow_index][token_index] = stoi(reservation_details[0]);
@@ -194,11 +196,11 @@ int configuration::read_flow_config(){
 						}
 						else{
 							std::cerr << "Queue state in flows not configured properly!!\nIgnoring the reservation\n";
-							if(-1 == this->reset_reserv_config(flow_index)){
+							if(SUCCESS != this->reset_reserv_config(flow_index)){
 								std::cerr<<"Critical Error. Exiting Program\n";
 								exit(0);
 							}
-							continue;
+							break;
 						}
 					}
 				}

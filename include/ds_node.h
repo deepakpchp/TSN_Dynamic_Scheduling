@@ -24,6 +24,7 @@ class node {
         void disconnect(int);
 		void print();
 		int get_node_id();
+		int get_adj_node_count();
         ~node();
 
 };

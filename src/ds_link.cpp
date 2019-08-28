@@ -153,8 +153,9 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 			
 			for (int time_index = start_time_index; time_index < end_time_index; time_index++){
 
+				int time_index_t = time_index % HYPER_PERIOD;
 				/*If the time slot is not free then this queue cannot be used */
-				if (link::FREE != this->gcl[time_index][queue_index]){
+				if (link::FREE != this->gcl[time_index_t][queue_index]){
 					is_curr_queue_free = false;
 					break;
 				}
@@ -162,27 +163,27 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 				bool is_schedulable = true;
 
 				/*Check if this slot is available for transmission or occupied by some other flow*/
-				if(true == this->slot_transmission_availablity[time_index]){
+				if(true == this->slot_transmission_availablity[time_index_t]){
 
 					/*If the slot is available for transmission, then check if the consecutive time 
 					 slots of same queue are available for transmission for all the frames of this
 					 instance of the flow which will be of length size.*/
 					for (int size_index = 1; size_index < size; size_index++){
 
-						int time_slot_index = (time_index + size_index) % HYPER_PERIOD;
+						int time_slot_index = (time_index_t + size_index) % HYPER_PERIOD;
 						if (link::FREE != this->gcl[time_slot_index][queue_index]){
 							is_curr_queue_free = false;
 							break;
 						}
 
-						if(true != this->slot_transmission_availablity[time_index + size_index]){
+						if(true != this->slot_transmission_availablity[time_index_t + size_index]){
 							is_schedulable = false;
 							break;
 						}
 					}
 
 					if (true == is_curr_queue_free && true == is_schedulable){
-						slot_assignment[period_index] = time_index;
+						slot_assignment[period_index] = time_index_t;
 						reserved_queue_index[period_index] = queue_index;
 						num_of_succ_reservation++;
 						break;
