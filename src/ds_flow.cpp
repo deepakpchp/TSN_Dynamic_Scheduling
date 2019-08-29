@@ -5,13 +5,12 @@ extern link* link_list[];
 using namespace std;
 
 /***************************************************************************************************
-TODO
-class: 
-Function Name: 
+class: flow 
+Function Name: flow(int src_node_id, int dst_node_id, int deadline, int size, int period)
 
-Description: 
+Description: Initializer for flow class object
 
-Return:
+Return: Void
 ***************************************************************************************************/
 flow::flow(int src_node_id, int dst_node_id, int deadline, int size, int period){
 	this->flow_id = this->id_flow++;

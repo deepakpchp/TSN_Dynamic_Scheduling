@@ -31,6 +31,7 @@ void print_conn_link_matrix_details(configuration* config_p);
 int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** route, 
 		int route_length[]);
 link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete);
+void rank_flows(int** route, int* route_length, int num_of_paths);
 
 
 /***************************************************************************************************
@@ -49,8 +50,8 @@ void print_conn_link_matrix_details(configuration* config_p){
 				int src_id = conn_link_matrix[r_index][c_index]->get_src_node_id();
 				int dst_id = conn_link_matrix[r_index][c_index]->get_dst_node_id();
 //				int open_slots = conn_link_matrix[r_index][c_index]->get_open_slots_count();
-//				int waiting_slots = conn_link_matrix[r_index][c_index]->get_waiting_slots_count();
-//				cout<<dst_id<<":"<<open_slots<<":"<<waiting_slots<<"\t";
+//				int wait_slots = conn_link_matrix[r_index][c_index]->get_wait_slots_count();
+//				cout<<dst_id<<":"<<open_slots<<":"<<wait_slots<<"\t";
 				cout<<src_id<<":"<<dst_id<<"\t";
 			}
 			else{
@@ -269,12 +270,13 @@ int main(){
 				flow_list[index]->print();
 			}
 			else {
-				INFO("Successfully scheduled the below mentioned flow");
-				flow_list[index]->print();
+				INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
+//				flow_list[index]->print();
 			}
 		}
 	}
-
+	
+	cout<<endl;
 	for(int index = 0; index < config.get_num_of_flows(); index++){
 		flow_list[index]->print();
 	}
@@ -288,26 +290,54 @@ int main(){
 
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: gen_tmp_conn_matrix 
 
-Description: 
+Description: This function will generate a temporary connectivity matrix with only the links that 
+			 can satisify the requirments of the flow passed. 
+			 This functions also removes the links to the nodes which has only one adjecent node 
+			 and it is not source or destintion. By doing this the worl load on the route discovery 
+			 algorithm is reduced.
 
-Return:
+Return: Void. As a reference new connectivity matrix is updated.
 ***************************************************************************************************/
-void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled){
-	/* 1) Delete all the nodes with only one connection*/
+void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_be_scheduled){
 	/* 2) Remove all the links that dont have enough free slots*/
 	/* 3) TODO */
 	for (int r_index=0; r_index < g_num_of_nodes; r_index++){
 		for (int c_index=0; c_index < g_num_of_nodes; c_index++){
-			if(NULL !=  conn_link_matrix[r_index][c_index]){
+			link* link_p = conn_link_matrix[r_index][c_index];
+
+			if(NULL ==  conn_link_matrix[r_index][c_index]){
+				tmp_conn_matrix[r_index][c_index] = 0;
+				continue;
+			}
+
+			/*Remove the link if it does't have enough resource for the flow_to_be_scheduled */
+			if (link_p->get_open_slots_count() < flow_to_be_scheduled->get_size()){
+				tmp_conn_matrix[r_index][c_index] = 0;
+				continue;
+			}
+
+			/*Don't remove the link if one of the end of the link is connecting to src or dst node*/
+			if (link_p->get_src_node_id() == flow_to_be_scheduled->get_src_node_id() 
+			|| link_p->get_dst_node_id() == flow_to_be_scheduled->get_src_node_id() 
+			|| link_p->get_src_node_id() == flow_to_be_scheduled->get_dst_node_id() 
+			|| link_p->get_dst_node_id() == flow_to_be_scheduled->get_dst_node_id()){
 				tmp_conn_matrix[r_index][c_index] = 1;
+				continue;
+			}
+
+			node* src_node = node_list[link_p->get_src_node_id()];
+			node* dst_node = node_list[link_p->get_dst_node_id()];
+
+			/*Delete the links which are connecting to end nodes which are not src or dst nodes*/
+			if ((src_node->get_adj_node_count() == 1 || dst_node->get_adj_node_count() == 1)){
+				tmp_conn_matrix[r_index][c_index] = 0;
 			}
 			else{
+				tmp_conn_matrix[r_index][c_index] = 1;
 
-				tmp_conn_matrix[r_index][c_index] = 0;
 			}
 		}
 	}
@@ -357,7 +387,6 @@ link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_
 		}
 	}
 
-	cout<<endl;
 	return ret_link;
 }
 
@@ -457,17 +486,27 @@ int schedule_flow(int flow_index){
 	num_of_paths = get_k_shortest_paths(tmp_conn_matrix, src_node_id, dst_node_id, 
 			&k_paths, route_length);
 
+	rank_flows(k_paths, route_length, num_of_paths);
 //	for(int index = 0; index < 3; index++){
 //		flow_list[index]->print();
 //	}
-	cout<<"Num of paths: "<<num_of_paths<<endl;
+//	cout<<"Num of paths: "<<num_of_paths<<endl;
 	for (int index = 0; index < num_of_paths; index++){
 		int ret_val = 0;
 		ret_val = do_reservation(flow_to_schedule, k_paths[index], route_length[index]);
 		if(SUCCESS == ret_val){
+			for (int tmp_index = index; tmp_index < K_SHORTEST_PATH; tmp_index++){
+				delete(k_paths[tmp_index]);
+
+			}
+			delete(k_paths);
 			return SUCCESS;
 		}
 
+		delete(k_paths[index]);
+	}
+
+	for (int index = num_of_paths; index < K_SHORTEST_PATH; index++){
 		delete(k_paths[index]);
 	}
 
@@ -476,6 +515,65 @@ int schedule_flow(int flow_index){
 	return FAILURE;
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: rank_flows
+
+Description: This functions will sort all the paths based on the ranks calculated using various 
+			 attributes of the route(path) such as average load on the links along the path, 
+			 route length etc. 
+
+Return: None
+***************************************************************************************************/
+void rank_flows(int** route, int* route_length, int num_of_routes){
+
+	float rank[num_of_routes];
+	float avg_open_slots[num_of_routes] = {0.0};
+	float avg_wait_slots[num_of_routes] = {0.0};
+	float max_open_slots = 0.0;
+	float max_wait_slots = 0.0;
+
+	for (int route_index = 0; route_index < num_of_routes; route_index++){
+		for (int node_index = 0; node_index < route_length[route_index] - 1; node_index++){
+	
+			int src_node_index = route[route_index][node_index];
+			int dst_node_index = route[route_index][node_index+1];
+			link* link_p = conn_link_matrix[src_node_index][dst_node_index];
+
+			float open_slot_count = (float)link_p->get_open_slots_count();
+			float wait_slot_count = (float)link_p->get_wait_slots_count();
+
+			avg_open_slots[route_index] += open_slot_count;
+			avg_wait_slots[route_index] += wait_slot_count;
+
+			if(max_open_slots < open_slot_count){
+				max_open_slots = open_slot_count;
+			}
+
+			if(max_wait_slots < wait_slot_count){
+				max_wait_slots = wait_slot_count;
+			}
+
+		}
+
+		avg_open_slots[route_index] /= (route_length[route_index] - 1);
+		avg_wait_slots[route_index] /= (route_length[route_index] - 1);
+
+	}
+
+	for (int route_index = 0; route_index < num_of_routes; route_index++){
+		for (int node_index = 0; node_index < route_length[route_index] - 1; node_index++){
+			cout<<route[route_index][node_index]<<"->";
+		}
+
+		rank[route_index] =   avg_open_slots[route_index]/max_open_slots 
+							+ avg_wait_slots[route_index]/max_wait_slots 
+							+ ((float)(route_length[0]-1)/(route_length[route_index]- 1)); 
+		cout<<rank[route_index]<<endl;
+	}
+	cout<<"Ranking is beeing Done\n";
+}
 
 /***************************************************************************************************
 TODO
@@ -551,7 +649,7 @@ int do_reservation(flow* flow, int* route, int route_length){
 					- old_flow_transmition_slot[node_index][period_index]; index++){
 
 				assigned_time_slot[reservation_length] = 
-					(old_flow_transmition_slot[node_index][period_index] + index -1);
+					(old_flow_transmition_slot[node_index][period_index] + index -1) % HYPER_PERIOD;
 
 				route_nodes[reservation_length] 
 					= get_link_id(route[node_index], route[node_index+1]);
@@ -565,11 +663,11 @@ int do_reservation(flow* flow, int* route, int route_length){
 
 			/*TODO Should all the instance of Transmission be stored in flow or only the first 
 			  instance of the Transmission in each link ?*/
-//			for(int index = 0; index < 1; index++){
+//			for(int index = 0; index < 1; index++)
 			for(int index = 0; index < size; index++){
 
 				assigned_time_slot[reservation_length] 
-					= ( slot_reservation_detail[node_index][period_index] + index -1);
+					= (slot_reservation_detail[node_index][period_index] + index -1) % HYPER_PERIOD;
 
 				route_nodes[reservation_length] 
 					= get_link_id(route[node_index], route[node_index+1]);

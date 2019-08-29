@@ -13,7 +13,7 @@ class link{
 		int dst_node_id;
 		int** gcl;
 		int open_slots_count;
-		int waiting_slots_count;
+		int wait_slots_count;
 		bool slot_transmission_availablity[HYPER_PERIOD]; 
 	public:
 		enum queue_reservation_state{
@@ -33,7 +33,7 @@ class link{
 		int get_src_node_id();
 		int get_dst_node_id();
 		int get_open_slots_count();
-		int get_waiting_slots_count();
+		int get_wait_slots_count();
 		int** get_gcl();
 		void update_gcl(int time_slot, int route_queue_assignment, queue_reservation_state state);
 		int do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_index, 

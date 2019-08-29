@@ -18,8 +18,8 @@ int link::get_open_slots_count(){
 	return this->open_slots_count;
 }
 
-int link::get_waiting_slots_count(){
-	return this->waiting_slots_count;
+int link::get_wait_slots_count(){
+	return this->wait_slots_count;
 }
 
 void link::set_dst_node_id(int dst_node_id){
@@ -60,7 +60,7 @@ link::link(int src_node_id, int dst_node_id){
 		this->slot_transmission_availablity[index] = true;
 	}
 	this->open_slots_count = HYPER_PERIOD;
-	this->waiting_slots_count = (HYPER_PERIOD * (NUM_OF_QUEUES_FOR_TT -1));
+	this->wait_slots_count = (HYPER_PERIOD * (NUM_OF_QUEUES_FOR_TT -1));
 
 }
 
@@ -90,7 +90,7 @@ void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_res
 			this->slot_transmission_availablity[time_slot] = false;
 		}
 		else if (link::WAITING == state){
-			this->waiting_slots_count--;
+			this->wait_slots_count--;
 		}
 		else if (link::FREE == state){
 			if(link::OPEN == this->gcl[time_slot][route_queue_assignment]){
@@ -98,7 +98,7 @@ void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_res
 				this->slot_transmission_availablity[time_slot] = true;
 			}
 			else if (link::WAITING == this->gcl[time_slot][route_queue_assignment]){
-				this->waiting_slots_count++;
+				this->wait_slots_count++;
 			}
 		}
 		else {
@@ -176,7 +176,7 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 							break;
 						}
 
-						if(true != this->slot_transmission_availablity[time_index_t + size_index]){
+						if(true != this->slot_transmission_availablity[time_slot_index]){
 							is_schedulable = false;
 							break;
 						}
