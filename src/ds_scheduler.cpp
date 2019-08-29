@@ -520,7 +520,7 @@ TODO
 class: 
 Function Name: rank_flows
 
-Description: This functions will sort all the paths based on the ranks calculated using various 
+Description: This functions will sort the routes based on the ranks calculated using various 
 			 attributes of the route(path) such as average load on the links along the path, 
 			 route length etc. 
 
@@ -564,15 +564,34 @@ void rank_flows(int** route, int* route_length, int num_of_routes){
 
 	for (int route_index = 0; route_index < num_of_routes; route_index++){
 		for (int node_index = 0; node_index < route_length[route_index] - 1; node_index++){
-			cout<<route[route_index][node_index]<<"->";
+//			cout<<route[route_index][node_index]<<"->";
 		}
 
-		rank[route_index] =   avg_open_slots[route_index]/max_open_slots 
-							+ avg_wait_slots[route_index]/max_wait_slots 
-							+ ((float)(route_length[0]-1)/(route_length[route_index]- 1)); 
-		cout<<rank[route_index]<<endl;
+		rank[route_index] =   (avg_open_slots[route_index]/max_open_slots) * -1
+							+ (avg_wait_slots[route_index]/max_wait_slots) * 2
+							+ (((float)(route_length[0]-1)/(route_length[route_index]- 1))) * 1; 
+//		cout<<rank[route_index]<<endl;
 	}
-	cout<<"Ranking is beeing Done\n";
+#if 1
+	for (int i = 0; i < num_of_routes-1; i++){
+		for (int j = i+1; j < num_of_routes; j++){
+			if (rank[i] < rank[j]){
+				float tmp = rank[i];
+				rank[i] = rank[j];
+				rank[j] = tmp;
+
+				int* tmp_route = route[i];
+				route[i] = route[j];
+				route[j] = tmp_route;
+
+				int tmp_route_length = route_length[i];
+				route_length[i] = route_length[j];
+				route_length[j] = tmp_route_length;
+
+			}
+		}
+	}
+#endif
 }
 
 /***************************************************************************************************
