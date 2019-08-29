@@ -108,7 +108,7 @@ Description:
 Return:
 ***************************************************************************************************/
 int configuration::read_flow_config(){
-		std::ifstream inFile("../flows.txt");
+		std::ifstream inFile("../configuration/flows.txt");
 		if(inFile.is_open()){
 			this->num_of_flows = std::count(std::istreambuf_iterator<char>(inFile),
 					std::istreambuf_iterator<char>(), '\n');
@@ -117,7 +117,7 @@ int configuration::read_flow_config(){
 		else {
 			std::cerr << "Couldn't open config file for reading.\n";
 		}
-		std::ifstream cFile ("../flows.txt");
+		std::ifstream cFile ("../configuration/flows.txt");
 		if (0 < this->num_of_flows)
 		{
 			this->reservation_availability= new bool[this->num_of_flows];
@@ -224,7 +224,7 @@ Description:
 Return:
 ***************************************************************************************************/
 int configuration::read_node_config(){
-		std::ifstream cFile ("../input.txt");
+		std::ifstream cFile ("../configuration/input.txt");
 		if (cFile.is_open())
 		{
 			std::string line;
