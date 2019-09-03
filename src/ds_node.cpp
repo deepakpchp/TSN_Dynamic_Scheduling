@@ -4,6 +4,8 @@
 
 extern link*** conn_link_matrix;
 extern int** conn_matrix;
+extern node** node_list;
+
 link* link_list[100];
 int num_of_links =  0;
 /***************************************************************************************************
@@ -34,9 +36,15 @@ Description:
 Return:
 ***************************************************************************************************/
 node::~node(){
-	for(unsigned int index = 0; index < this->adj_node_count; index++){
-		this->disconnect(this->adj_node[index]->node_id);
+	std::cout<<"Disctructor Called\n";
+	unsigned adj_node_count = this->adj_node_count;
+	for(unsigned int index = 0; index < adj_node_count; index++){
+		/*Always index 0 is deleted because everytime adj node in index  0 is deleted, 
+		  the adj node in the last index is copied to 0. By thisway the list remains contineous.
+		  example deletion pattern:  0,1,2,3 -> 3,1,2 -> 2,1 -> 1 -> NULL*/
+		this->disconnect(this->adj_node[0]->node_id);
 	}
+	node_list[this->get_node_id()] = nullptr;	
 }
 
 /***************************************************************************************************
@@ -112,6 +120,7 @@ void node::disconnect(int delete_node_id){
 					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
 					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
 					
+					std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
 					delete(adj_node->adj_link[index2]);
 					adj_node->adj_link[index2] = adj_node->adj_link[adj_node->adj_node_count-1];
 					adj_node->adj_link[adj_node->adj_node_count-1] = nullptr;
@@ -123,7 +132,8 @@ void node::disconnect(int delete_node_id){
 				}
 			}
 			if(false == deletion_flag){
-				std::cout<<"Unnable to delete the link of node id:"<<this->node_id <<" in the node :"<<delete_node_id<<std::endl;
+				ERROR("Unnable to delete the link of node id:"<<this->node_id 
+						<<" in the node :"<<delete_node_id);
 				break;
 			}
 
@@ -131,6 +141,7 @@ void node::disconnect(int delete_node_id){
 			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
 			this->adj_node[this->adj_node_count-1] = nullptr;
 
+			std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
 			delete(this->adj_link[index]);
 			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
 			this->adj_link[this->adj_node_count-1] = nullptr;
@@ -156,6 +167,7 @@ Return:
 void node::print(){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		std::cout<<this->adj_link[index]->get_link_id()<<"\t";
+		std::cout<<this->adj_link[index]->get_passing_flow_count()<<"\t";
 		std::cout<<this->node_id<<" -> "<<this->adj_node[index]->node_id<<"\t";
 		int** gcl = this->adj_link[index]->get_gcl();
 		for (int index2 = 0; index2 < HYPER_PERIOD; index2++){
@@ -199,3 +211,82 @@ int node::get_adj_node_count(){
 	return this->adj_node_count;
 }
 
+#if 0
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+int node::get_flows_through_node(int **passing_flow_ids){
+
+	int flow_count = 0;
+G
+	/*Check all the adj links to get all the flow ids passing through this node */
+	for (int adj_index = 0; adj_index < MAX_PORTS; adj_index++){
+		link* adj_link = this->adj_link[adj_index];
+		int* flow_ids = NULL;
+		int num_of_flows = 0;
+
+		if (adj_link == NULL){
+			continue;
+		}
+		/*get all the flow ids passing through adj link*/
+		num_of_flows = adj_link->get_passing_flow_ids(&flow_ids);
+
+		for (int index = 0; index < num_of_flows; index++){
+			/*Add the flow_id without duplicate to the passing_flow_ids linked list*/
+			int ret_val = passing_flow_ids->add_no_duplicate(flow_ids[index]);
+			if(SUCCESS == ret_val){
+				flow_count++;
+			}
+		}
+		delete(flow_ids);
+	}
+
+	return flow_count;
+
+}
+#endif
+
+/***************************************************************************************************
+class: node
+Function Name: add_passing_flow_to_list
+
+Description: this function will add the flow id to the list of passing flows though calling node obj
+
+Return: None
+***************************************************************************************************/
+void node::add_passing_flow_to_list(int flow_id){
+	/*Add the flow to the list of passing flows on the link only if it doesnt already exist*/
+	this->passing_flow_list.add_no_duplicate(flow_id);
+}
+
+/***************************************************************************************************
+class: node
+Function Name: delete_passing_flow_from_list
+
+Description: this function will delete the flow id from the list of passing flows though 
+			 calling node obj
+
+Return: 0 - Successful, 1 Failure
+***************************************************************************************************/
+int node::delete_passing_flow_from_list(int flow_id){
+	return this->passing_flow_list.remove(flow_id);
+}
+
+
+/***************************************************************************************************
+class: node
+Function Name: get_passing_flow_ids
+
+Description: Returns all the flow ids passing through this node in a array passed
+
+Return: 0 - Successful, 1 Failure
+***************************************************************************************************/
+int node::get_passing_flow_ids(int **passing_flow_ids){
+	return this->passing_flow_list.get_all_data(passing_flow_ids);
+}

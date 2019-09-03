@@ -17,6 +17,7 @@ extern int num_of_links;
 link*** conn_link_matrix;
 int** conn_matrix; 
 int g_num_of_nodes = 0;
+int g_num_of_flows = 0;
 
 int link::id_link = 0;
 int flow::id_flow = 0;
@@ -25,13 +26,15 @@ int read_and_configure_nodes(configuration* config);
 int read_and_configure_flows(configuration* config);
 int get_link_id(int src_node_id, int dst_node_id);
 int schedule_flow(int flow_index);
-int do_reservation(flow* flow, int* route, int route_length);
+int perform_flow_reservation(flow* flow, int* route, int route_length);
 void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled);
 void print_conn_link_matrix_details(configuration* config_p);
 int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** route, 
 		int route_length[]);
 link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete);
 void rank_flows(int** route, int* route_length, int num_of_paths);
+int delete_node(int node_id);
+flow* get_flow_ptr_from_id(int flow_id);
 
 
 /***************************************************************************************************
@@ -124,6 +127,8 @@ Return:
 ***************************************************************************************************/
 int read_and_configure_flows(configuration* config){
 	config->read_flow_config();
+
+	g_num_of_flows = config->get_num_of_flows();
     flow_list = new flow*[config->get_num_of_flows()];
 
 	for (int index = 0; index < config->get_num_of_flows(); index++){
@@ -233,32 +238,42 @@ int main(){
 		exit (0);
 	}
 
-	if(read_and_configure_flows(&config)){
+	if (read_and_configure_flows(&config)){
 		cerr<<"Something went wrong in read_and_configure_flows.\nExiting the program\n";
 		exit (0);
 	}
 
 
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		flow_list[index]->print();
+	for (int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
 	}
 
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		node_list[index]->print();
+	for (int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
 	}
-	
+
 	for (int index = 0; index < config.get_num_of_flows(); index++){
-		delete_flow_reservation(index);
+		if (flow_list[index]->get_is_scheduled()){
+			delete_flow_reservation(index);
+		}
 	}
 
 	print_conn_link_matrix_details(&config);
 
 	for(int index = 0; index < config.get_num_of_flows(); index++){
-		flow_list[index]->print();
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
 	}
 
 	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		node_list[index]->print();
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
 	}
 
 	for(int index = 0; index < config.get_num_of_flows(); index++){
@@ -267,25 +282,49 @@ int main(){
 			ret_val = schedule_flow(index);
 			if (SUCCESS != ret_val){
 				ERROR("Unnable to schedule the below mentioned flow\n");
-				flow_list[index]->print();
+				if (NULL != flow_list[index]){
+					flow_list[index]->print();
+				}
 			}
 			else {
 				INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
-//				flow_list[index]->print();
+				//				flow_list[index]->print();
 			}
 		}
 	}
-	
+
 	cout<<endl;
 	for(int index = 0; index < config.get_num_of_flows(); index++){
-		flow_list[index]->print();
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
 	}
 
 	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		node_list[index]->print();
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
 	}
 
-    return 0;
+//	delete_node(7);
+	delete(node_list[7]);
+
+	cout<<endl;
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+
+	//	delete_link();
+
+	return 0;
 }
 
 
@@ -344,13 +383,14 @@ void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_be_scheduled){
 }
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: get_link_to_detele_in_cm
 
-Description: 
+Description: During prcess of route discovery, new route is discovered by removing a worst link on
+			 alredy discovered route. This Function will return a worst link along the route which
+			 will be deleted by the calling function.
 
-Return:
+Return: pointer to the link to be deleted from the route
 ***************************************************************************************************/
 link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete){
 	
@@ -493,7 +533,7 @@ int schedule_flow(int flow_index){
 //	cout<<"Num of paths: "<<num_of_paths<<endl;
 	for (int index = 0; index < num_of_paths; index++){
 		int ret_val = 0;
-		ret_val = do_reservation(flow_to_schedule, k_paths[index], route_length[index]);
+		ret_val = perform_flow_reservation(flow_to_schedule, k_paths[index], route_length[index]);
 		if(SUCCESS == ret_val){
 			for (int tmp_index = index; tmp_index < K_SHORTEST_PATH; tmp_index++){
 				delete(k_paths[tmp_index]);
@@ -595,15 +635,15 @@ void rank_flows(int** route, int* route_length, int num_of_routes){
 }
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: perform_flow_reservation 
 
-Description: 
+Description: Once the routes are discovered, this method is called to do slot reservation on all
+			 the links throughout the route of the flows.
 
-Return:
+Return: Return: 0 - Successful, 1 Failure 
 ***************************************************************************************************/
-int do_reservation(flow* flow, int* route, int route_length){
+int perform_flow_reservation(flow* flow, int* route, int route_length){
 	int period = flow->get_period();
 	int size = flow->get_size();
 	int deadline = flow->get_deadline();
@@ -704,4 +744,59 @@ int do_reservation(flow* flow, int* route, int route_length){
 			, route_nodes, queue_assignment, state, reservation_length);
 
     return SUCCESS;
+}
+
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+
+int delete_node(int node_id){
+	node* node_to_delete = node_list[node_id];
+
+	if (NULL == node_to_delete){
+		ERROR("Node id:"<<node_id<<" trying to delete doestn#t exist.");
+	}
+
+	int* flow_ids = NULL;
+	int num_of_flows =  node_to_delete->get_passing_flow_ids(&flow_ids);
+	
+	for (int index = 0; index < num_of_flows; index++){
+		flow* flow_to_delete = get_flow_ptr_from_id(flow_ids[index]);
+		cout<<"Flow ID:"<<flow_to_delete->get_flow_id();
+		if (NULL != flow_to_delete){
+			flow_to_delete->remove_route_and_queue_assignment();
+		}
+	}
+	
+	delete(node_to_delete);
+	delete(flow_ids);
+	return SUCCESS;
+}
+
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+flow* get_flow_ptr_from_id(int flow_id){
+	for (int index = 0; index < g_num_of_flows; index++){
+		if( NULL != flow_list[index]){
+			if(flow_id == flow_list[index]->get_flow_id()){
+				return flow_list[index];
+			}
+		}
+	}
+
+	ERROR("Trying to retrive the flow with flow_id:"<<flow_id<<" which doesnt exist.");
+	return NULL;
 }

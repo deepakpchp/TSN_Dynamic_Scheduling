@@ -1,5 +1,10 @@
 #include <ds.h>
+#include <ds_node.h>
 #include <ds_link.h>
+#include <ds_flow.h>
+
+extern node** node_list;
+extern flow* get_flow_ptr_from_id(int flow_id);
 
 void link::set_link_id(int link_id){
 	this->link_id = link_id;
@@ -39,13 +44,12 @@ int** link::get_gcl(){
 }
 
 /***************************************************************************************************
-TODO
-class: 
-Function Name: 
+class: link
+Function Name: constructor
 
-Description: 
+Description: Constructor function for the class link. 
 
-Return:
+Return: None
 ***************************************************************************************************/
 link::link(int src_node_id, int dst_node_id){
 	this->link_id = this->id_link++;
@@ -61,38 +65,70 @@ link::link(int src_node_id, int dst_node_id){
 	}
 	this->open_slots_count = HYPER_PERIOD;
 	this->wait_slots_count = (HYPER_PERIOD * (NUM_OF_QUEUES_FOR_TT -1));
-
 }
 
 /***************************************************************************************************
-TODO
-class: 
+class: link
+Function Name: destructor
+
+Description: destructor function for the class link. 
+
+Return: None
+***************************************************************************************************/
+link::~link(){
+	int* flow_ids = NULL;
+	int num_of_flows =  this->get_passing_flow_ids(&flow_ids);
+	std::cout<<"In link destructor num_of_flows:"<<num_of_flows<<" link_id:"<<this->get_link_id();
+	std::cout<<"\n";
+	for (int index = 0; index < num_of_flows; index++){
+		flow* flow_to_delete = get_flow_ptr_from_id(flow_ids[index]);
+		if (NULL != flow_to_delete){
+			flow_to_delete->remove_route_and_queue_assignment();
+		}
+	}
+	
+	delete(flow_ids);
+}
+/***************************************************************************************************
+class: link
 Function Name: 
 
-Description: 
+Description: This function will assign the route_queue_assignment and queue state for the respective
+			 time slot on the links. This funcion will also update the flow id's of the flows 
+			 passing through the link.
 
-Return:
+Return: None
 ***************************************************************************************************/
-void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_reservation_state state){
+void link::update_gcl(int time_slot, int route_queue_assignment, int flow_id, 
+		link::queue_reservation_state state){
 	if (time_slot >= HYPER_PERIOD){
-		std::cerr<<"Invalid Time Slot for reservation.\n";
-		std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
-		exit(0);
+		FATAL("Invalid Time Slot reservation for flow:"<<flow_id<<".\nError link id:"
+			<<this->get_link_id()<<" time_slot:"<<time_slot<< " route_queue_assignment:"
+			<<route_queue_assignment<<" state:"<<this->gcl[time_slot][route_queue_assignment]);
 	}
 	if (state != this->gcl[time_slot][route_queue_assignment]){
 		if (route_queue_assignment < (QUEUES_PER_PORT - NUM_OF_QUEUES_FOR_TT)){
-			std::cerr<<"Trying to assign BE queue for TT traffic.\n";
-			std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
-			exit(0);
+			FATAL("Trying to assign BE queue for TT traffic.\nErro link id: "<<this->get_link_id()
+				<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment
+				<<" current state: "<<this->gcl[time_slot][route_queue_assignment]);
 		}
 		if(link::OPEN == state){
 			this->open_slots_count--;
 			this->slot_transmission_availablity[time_slot] = false;
+			this->add_passing_flow_to_list(flow_id);
 		}
 		else if (link::WAITING == state){
 			this->wait_slots_count--;
+			this->add_passing_flow_to_list(flow_id);
 		}
 		else if (link::FREE == state){
+			int ret_val = 0;
+			ret_val = this->delete_passing_flow_from_list(flow_id);
+			if(SUCCESS != ret_val){
+				LOG("Trying to remove the flow which is not passing through the link.\n"
+					<<"link id:"<<this->get_link_id()<<" invalid flow id to delete:"<<flow_id);
+			}
+
 			if(link::OPEN == this->gcl[time_slot][route_queue_assignment]){
 				this->open_slots_count++;
 				this->slot_transmission_availablity[time_slot] = true;
@@ -102,17 +138,17 @@ void link::update_gcl(int time_slot, int route_queue_assignment, link::queue_res
 			}
 		}
 		else {
-			std::cerr<<"Trying to assign invalid state to GCL.\n";
-			std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
-			exit(0);
-
+			FATAL("Trying to assign invalid state to GCL.\nErro link id: "<<this->get_link_id()
+				<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment
+				<<" current state:"<<this->gcl[time_slot][route_queue_assignment]);
 		}
 		this->gcl[time_slot][route_queue_assignment] = state;
 	}
 	else {
-		std::cerr<<"Trying to assign the gcl which is alread been assigned.\n";
-		std::cerr<<"Erro link id: "<<this->get_link_id()<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment<<" current state: "<<this->gcl[time_slot][route_queue_assignment]<<std::endl<<std::endl;
-		exit(0);
+		FATAL("Trying to assign the gcl which is alread been assigned.\nErro link id: "
+			<<this->get_link_id()<<" time_slot: " <<time_slot
+			<< " route_queue_assignment:"<<route_queue_assignment
+			<<" current state:"<<this->gcl[time_slot][route_queue_assignment]);
 	}
 
 }
@@ -217,4 +253,67 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 	}
 	LOG("Unnable to Do the reservation");
 	return FAILURE;
+}
+
+
+/***************************************************************************************************
+class: link
+Function Name: add_passing_flow_to_list
+
+Description: this function will add the flow id to the list of passing flows though calling link obj
+
+Return: None
+***************************************************************************************************/
+void link::add_passing_flow_to_list(int flow_id){
+	/*Add the flow to the list of passing flows on the link only if it doesnt already exist*/
+	this->passing_flow_list.add_no_duplicate(flow_id);
+	node* src_node = node_list[this->get_src_node_id()];
+	node* dst_node = node_list[this->get_dst_node_id()];
+
+	src_node->add_passing_flow_to_list(flow_id);
+	dst_node->add_passing_flow_to_list(flow_id);
+}
+
+/***************************************************************************************************
+class: link
+Function Name: delete_passing_flow_from_list
+
+Description: this function will delete the flow id from the list of passing flows though 
+			 calling link obj
+
+Return: 0 - Successful, 1 Failure
+***************************************************************************************************/
+int link::delete_passing_flow_from_list(int flow_id){
+	node* src_node = node_list[this->get_src_node_id()];
+	node* dst_node = node_list[this->get_dst_node_id()];
+
+	src_node->delete_passing_flow_from_list(flow_id);
+	dst_node->delete_passing_flow_from_list(flow_id);
+
+	return this->passing_flow_list.remove(flow_id);
+}
+
+
+/***************************************************************************************************
+class: link
+Function Name: get_passing_flow_count
+
+Description: Returns number of flows passing through this link
+
+Return: 0 - Successful, 1 Failure
+***************************************************************************************************/
+int link::get_passing_flow_count(){
+	return this->passing_flow_list.get_count();
+}
+
+/***************************************************************************************************
+class: link
+Function Name: get_passing_flow_ids
+
+Description: Returns all the flow ids passing through this link in a array passed
+
+Return: 0 - Successful, 1 Failure
+***************************************************************************************************/
+int link::get_passing_flow_ids(int **passing_flow_ids){
+	return this->passing_flow_list.get_all_data(passing_flow_ids);
 }

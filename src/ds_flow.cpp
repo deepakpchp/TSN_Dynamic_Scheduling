@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ds.h>
 #include <ds_flow.h>
 
 extern link* link_list[];
@@ -235,40 +236,42 @@ void flow::print(){
 }
 
 /***************************************************************************************************
-TODO
-class: 
-Function Name: 
+class: flow
+Function Name: assign_route_and_queue 
+			   
+Description: This function will assigne the time slot assignment, route details and 
+			 queue assignemt for the flow along the route for the flow. This will also call the
+			 update_gcl functions of the links along the route to update the Gate control list and
+			 queue assignments of corresponding links.
 
-Description: 
-
-Return:
+Return: None 
 ***************************************************************************************************/
-void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* route_queue_assignment, link::queue_reservation_state* state, int reservation_length){
+void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* route_queue_assignment,
+		link::queue_reservation_state* state, int reservation_length){
+
+	/*Update the flow object with the reseration details*/
 	this->set_assigned_time_slot(assigned_time_slot, reservation_length);
 	this->set_route(route, reservation_length);
 	this->set_state(state, reservation_length);
 	this->set_route_queue_assignment(route_queue_assignment, reservation_length);
 
+	/*Update the gate control list on all the links along the route*/
 	for(int index = 0; index < reservation_length; index++){
-		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) && (assigned_time_slot[index] >= 0)){
-            if (link::OPEN == state[index]){
-				/*TODO Should all the instance of Transmission be stored in flow or only the first 
-				  instance of the Transmission in each link ?*/
-			    link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], state[index]); 
-               // for (int frame_index = 0; frame_index < size; frame_index++){
-			   //     link_list[route[index]]->update_gcl(assigned_time_slot[index] +frame_index, route_queue_assignment[index], state[index]); 
-               // }
-            }
-            else if (link::WAITING == state[index])  {
-			    link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], state[index]); 
+		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) 
+				&& (assigned_time_slot[index] >= 0)){
+
+            if (link::OPEN == state[index] || link::WAITING == state[index]){
+			    link_list[route[index]]->update_gcl(assigned_time_slot[index], 
+						route_queue_assignment[index],this->get_flow_id(), state[index]); 
             }
 			else{
-				std::cerr<<"Trying to do invalid reservation in GCL for the flow id: "<<this->get_flow_id()<<std::endl;
-				std::cerr<<"Invalid queue state is: "<<state[index]<<std::endl;
+				ERROR("Trying to do invalid reservation in GCL for the flow id:"
+						<<this->get_flow_id()<< " with queue state:"<<state[index]);
 			}
 		}
 		else{
-				std::cerr<<"Invalid Link Id in the route for the Flow :"<<this->get_flow_id()<<std::endl;
+				ERROR("Invalid resrvation for the flow:"<<this->get_flow_id()
+						<<". Time slot:"<<assigned_time_slot[index]<<" link_id:"<<route[index]);
 			
 		}
 	}
@@ -276,35 +279,41 @@ void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* rout
 }
 
 /***************************************************************************************************
-TODO
-class: 
-Function Name: 
+class: flow 
+Function Name: remove_route_and_queue_assignment
 
-Description: 
+Description: This function will delete the reservation on all the links along the route.
 
-Return:
+Return: None
 ***************************************************************************************************/
 void flow::remove_route_and_queue_assignment(){
+
+	if (true != this->get_is_scheduled()){
+		ERROR("Trying to delete the schedule of unscheduled flow id:"<<this->get_flow_id());
+		return;
+	}
+
 	int* assigned_time_slot = this->get_assigned_time_slot();
 	int* route = this->get_route();
 	link::queue_reservation_state* state = this->get_state();
 	int* route_queue_assignment = this->get_route_queue_assignment();
 
 	for(int index = 0; index < this->get_reservation_length(); index++){
-		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) && (assigned_time_slot[index] >= 0)){
-			if (link::OPEN == state[index]){
-					link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], link::FREE); 
+		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) 
+				&& (assigned_time_slot[index] >= 0)){
 
-			}
-			else if (link::WAITING == state[index])  {
-				link_list[route[index]]->update_gcl(assigned_time_slot[index], route_queue_assignment[index], link::FREE); 
+			if (link::OPEN == state[index] || link::WAITING == state[index]){
+				link_list[route[index]]->update_gcl(assigned_time_slot[index], 
+					 route_queue_assignment[index], this->get_flow_id(), link::FREE); 
 			}
 			else{
-				std::cerr<<"Trying to free invalid reservation in GCL for the flow id: "<<this->get_flow_id()<<std::endl;
+				std::cerr<<"Trying to free invalid reservation in GCL for the flow id: "
+					<<this->get_flow_id()<<std::endl;
 			}
 		}
 		else{
-			std::cerr<<"Invalid link id: "<<route[index]<<" in the route of the flow id: "<<this->get_flow_id()<<std::endl;
+			std::cerr<<"Trying to delete invalid link id: "<<route[index]
+				<<" in the route of the flow id: "<<this->get_flow_id()<<std::endl;
 		}
 	}
 

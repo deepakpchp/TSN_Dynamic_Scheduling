@@ -12,6 +12,7 @@ class node {
         unsigned int adj_node_count;
         node* adj_node[MAX_PORTS];
 		link* adj_link[MAX_PORTS];
+		linked_list passing_flow_list;
 
     public:
         enum  node_type{ 
@@ -25,6 +26,11 @@ class node {
 		void print();
 		int get_node_id();
 		int get_adj_node_count();
+
+		void add_passing_flow_to_list(int flow_id);
+		int delete_passing_flow_from_list(int flow_id);
+		int get_passing_flow_ids(int **passing_flow_ids);
+
         ~node();
 
 };
