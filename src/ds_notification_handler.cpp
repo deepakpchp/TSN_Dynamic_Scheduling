@@ -1,5 +1,5 @@
 #include <ds_utils.h>
-#include <ds_mr_handler.h>
+#include <ds_notification_handler.h>
 #include <fstream>
 #include <algorithm>
 #include <vector>
@@ -9,25 +9,25 @@
 extern link*** conn_link_matrix;
 
 /***************************************************************************************************
-class: mr_handler
+class: notification_handler
 Function Name: constructor
 
 Description:  
 
 Return: None
 ***************************************************************************************************/
-mr_handler::mr_handler(){
+notification_handler::notification_handler(){
 }
 
 /***************************************************************************************************
-class: mr_handler
+class: notification_handler
 Function Name: destructor
 
 Description: cleanup all the data structurs 
 
 Return: None
 ***************************************************************************************************/
-mr_handler::~mr_handler(){
+notification_handler::~notification_handler(){
     flows_to_delete.clear();
     flows_to_add.clear();
     flows_to_modify.clear();
@@ -44,7 +44,7 @@ Description:
 
 Return: None
 ***************************************************************************************************/
-int mr_handler::read_modification_request(){
+int notification_handler::read_modification_request(){
     std::ifstream inFile("../configuration/notification.txt");
     if(!inFile.is_open()){
         std::cerr << "Couldn't open notification file for reading.\n";
@@ -114,7 +114,7 @@ Description:
 
 Return: None
 ***************************************************************************************************/
-void mr_handler::print(){
+void notification_handler::print(){
     std::cout<<"Flows to delete: ";
     for(auto &flow_id: flows_to_delete) {
         std::cout<<flow_id<<" ";
