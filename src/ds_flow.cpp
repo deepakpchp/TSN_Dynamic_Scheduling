@@ -3,11 +3,13 @@
 #include <ds_flow.h>
 
 extern link* link_list[];
+extern flow** flow_list;
+
 using namespace std;
 
 /***************************************************************************************************
 class: flow 
-Function Name: flow(int src_node_id, int dst_node_id, int deadline, int size, int period)
+Function Name: constructor for flow
 
 Description: Initializer for flow class object
 
@@ -27,11 +29,40 @@ flow::flow(int src_node_id, int dst_node_id, int deadline, int size, int period)
 		this->route[index] = -1;
 	}
 	this->reservation_length = 0;
-	this->is_scheduled = false;
+	this->reservation_status = flow::NEW;
 }
 
-void flow::set_is_scheduled(bool is_scheduled){
-	this->is_scheduled = is_scheduled;
+/***************************************************************************************************
+class: 
+Function Name:  
+
+Description: 
+
+Return:
+***************************************************************************************************/
+flow::~flow(){
+	if (flow::DELETE_FLOW != this->get_reservation_status()){
+		FATAL("Trying to delete Flow id:"<<this->get_flow_id()<<" which is not ment to be deleted");
+	}
+	bool delete_status_flag = false;
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (this->get_flow_id() == flow_list[index]->get_flow_id()){
+			flow_list[index] = nullptr;
+			delete_status_flag = true;
+			break;
+		}
+	}
+
+	if (false == delete_status_flag){
+		FATAL("Trying to remove Flow id:"<<this->get_flow_id()
+				<<" from flow_list but it doesnt exist." );
+	}
+
+}
+
+
+void flow::set_reservation_status(flow::reservation_state current_state){
+	this->reservation_status = current_state;
 }
 
 void flow::set_src_node_id(int src_node_id){
@@ -92,8 +123,8 @@ int flow::get_flow_id(){
 	return this->flow_id;
 }
 
-bool flow::get_is_scheduled(){
-	return this->is_scheduled;
+flow::reservation_state flow::get_reservation_status(){
+	return this->reservation_status;
 }
 
 int flow::get_src_node_id(){
@@ -190,10 +221,10 @@ Description:
 
 Return:
 ***************************************************************************************************/
-void flow::delete_route_queue_assignment(){
+void flow::delete_route_queue_assignment(flow::reservation_state new_state){
 	this->reservation_length = 0;
 	delete(this->route_queue_assignment);
-	this->set_is_scheduled(false);
+	this->set_reservation_status(new_state);
 	this->route_queue_assignment = NULL;
 }
 
@@ -207,13 +238,24 @@ Description: This Function will print the details of the calling flow object.
 Return: void
 ***************************************************************************************************/
 void flow::print(){
+
+	const char* reservation_state_names[] =
+	{
+		stringify(DELETE_FLOW),
+		stringify(NEW),
+		stringify(MODIFIED),
+		stringify(NODE_DELETED),
+		stringify(LINK_DELETED),
+		stringify(SCHEDULED)
+	};
+
 	cout<<"Flow_id: "<<this->get_flow_id()<<endl;
 	cout<<"From node: "<<this->src_node_id<<" to "<<this->dst_node_id<<endl;
 	cout<<"Deadline: "<<this->get_deadline()<<", Size: "<<this->get_size();
 	cout<<", Period: "<<this->get_period() <<endl;
-    cout<<"Scheduled_Status: "<<this->get_is_scheduled();
+	cout<<"Scheduled_Status: "<<reservation_state_names[this->get_reservation_status()];
 
-	if(this->get_is_scheduled()){
+	if(SCHEDULED == this->get_reservation_status()){
 		int reservation_length = this->get_reservation_length();
 		int* route = this->get_route();
 		int* route_queue_assignment = this->get_route_queue_assignment();
@@ -275,7 +317,7 @@ void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* rout
 			
 		}
 	}
-	this->set_is_scheduled(true);
+	this->set_reservation_status(SCHEDULED);
 }
 
 /***************************************************************************************************
@@ -286,9 +328,9 @@ Description: This function will delete the reservation on all the links along th
 
 Return: None
 ***************************************************************************************************/
-void flow::remove_route_and_queue_assignment(){
+void flow::remove_route_and_queue_assignment(flow::reservation_state new_state){
 
-	if (true != this->get_is_scheduled()){
+	if (SCHEDULED != this->get_reservation_status()){
 		ERROR("Trying to delete the schedule of unscheduled flow id:"<<this->get_flow_id());
 		return;
 	}
@@ -320,5 +362,5 @@ void flow::remove_route_and_queue_assignment(){
 	this->delete_assigned_time_slot();
 	this->delete_route();
 	this->delete_state();
-	this->delete_route_queue_assignment();
+	this->delete_route_queue_assignment(new_state);
 }

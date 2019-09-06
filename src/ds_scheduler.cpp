@@ -36,6 +36,7 @@ link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_
 void rank_flows(int** route, int* route_length, int num_of_paths);
 int delete_node(int node_id);
 flow* get_flow_ptr_from_id(int flow_id);
+int delete_flow(int flow_index);
 
 
 /***************************************************************************************************
@@ -130,7 +131,10 @@ int read_and_configure_flows(configuration* config){
 	config->read_flow_config();
 
 	g_num_of_flows = config->get_num_of_flows();
-    flow_list = new flow*[config->get_num_of_flows()];
+    flow_list = new flow*[MAX_NUM_FLOWS];
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		flow_list[index] = nullptr;
+	}
 
 	for (int index = 0; index < config->get_num_of_flows(); index++){
 
@@ -215,9 +219,9 @@ Description:
 
 Return:
 ***************************************************************************************************/
-int delete_flow_reservation(int flow_index){
-
-	flow_list[flow_index]->remove_route_and_queue_assignment();
+int delete_flow(int flow_index){
+	flow_list[flow_index]->remove_route_and_queue_assignment(flow::DELETE_FLOW);
+	delete(flow_list[flow_index]);
 	return 0;
 }
 
@@ -258,8 +262,8 @@ int main(){
 	}
 
 	for (int index = 0; index < config.get_num_of_flows(); index++){
-		if (flow_list[index]->get_is_scheduled()){
-			delete_flow_reservation(index);
+		if (flow::DELETE_FLOW == flow_list[index]->get_reservation_status()){
+			delete_flow(index);
 		}
 	}
 
@@ -278,7 +282,8 @@ int main(){
 	}
 
 	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if(!flow_list[index]->get_is_scheduled()){
+		if(flow::SCHEDULED != flow_list[index]->get_reservation_status() && 
+				flow::DELETE_FLOW != flow_list[index]->get_reservation_status()){
 			int ret_val = 0;
 			ret_val = schedule_flow(index);
 			if (SUCCESS != ret_val){
@@ -308,8 +313,8 @@ int main(){
 	}
 
 //	delete_node(7);
-	delete(node_list[7]);
-
+//	delete(node_list[7]);
+	delete(link_list[19]);
 	cout<<endl;
 	for(int index = 0; index < config.get_num_of_flows(); index++){
 		if (NULL != flow_list[index]){
@@ -763,7 +768,7 @@ int delete_node(int node_id){
 	node* node_to_delete = node_list[node_id];
 
 	if (NULL == node_to_delete){
-		ERROR("Node id:"<<node_id<<" trying to delete doestn#t exist.");
+		ERROR("Node id:"<<node_id<<" trying to delete doestnt exist.");
 	}
 
 	int* flow_ids = NULL;
@@ -773,7 +778,7 @@ int delete_node(int node_id){
 		flow* flow_to_delete = get_flow_ptr_from_id(flow_ids[index]);
 		cout<<"Flow ID:"<<flow_to_delete->get_flow_id();
 		if (NULL != flow_to_delete){
-			flow_to_delete->remove_route_and_queue_assignment();
+			flow_to_delete->remove_route_and_queue_assignment(flow::NODE_DELETED);
 		}
 	}
 	

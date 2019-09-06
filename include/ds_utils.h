@@ -1,5 +1,5 @@
-#ifndef DS_H
-#define DS_H
+#ifndef DS_UTILS_H
+#define DS_UTILS_H
 #include <vector>
 #include <string>
 #include <iostream>
@@ -11,10 +11,13 @@
 //#define LOG(X) std::cout<<"Log! "<<__FILE__<<":"<<__LINE__<<" "<<X<<std::endl
 #define LOG(X) 
 #define ERROR(X) std::cerr<<"Error!! "<<__FILE__<<":"<<__LINE__<<" "<<X<<std::endl
-#define FATAL(X) std::cerr<<"Fatal Error!!! "<<__FILE__<<":"<<__LINE__<<" "<<X<<std::endl<<std::endl; exit(0)
+#define FATAL(X) std::cerr<<"Fatal Error!!! "<<__FILE__<<":"<<__LINE__<<" "<<X\
+					<<std::endl<<std::endl; exit(0)
+
+#define stringify( name ) # name
+
 void tokenize(std::string const &str, const char delim,
             std::vector<std::string> &out);
-
 
 struct list_node
 {

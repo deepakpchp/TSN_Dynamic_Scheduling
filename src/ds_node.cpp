@@ -112,21 +112,21 @@ Return:
 void node::disconnect(int delete_node_id){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		if(this->adj_node[index]->node_id == delete_node_id){
-			/*Delete the link to this node in the adjacent node*/
+			/*Delete the link to this node from the adjacent node in adj node obj*/
 			node* adj_node = this->adj_node[index];
 			bool deletion_flag = false;
 			for(unsigned int index2 = 0; index2 < adj_node->adj_node_count; index2++){
 				if(adj_node->adj_node[index2]->node_id == this->node_id){
-					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
-					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
+//					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
+//					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
 					
-					std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
+//					std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
 					delete(adj_node->adj_link[index2]);
-					adj_node->adj_link[index2] = adj_node->adj_link[adj_node->adj_node_count-1];
-					adj_node->adj_link[adj_node->adj_node_count-1] = nullptr;
+//					adj_node->adj_link[index2] = adj_node->adj_link[adj_node->adj_node_count-1];
+//					adj_node->adj_link[adj_node->adj_node_count-1] = nullptr;
 
 
-					adj_node->adj_node_count--;
+//					adj_node->adj_node_count--;
 					deletion_flag = true;
 					break;
 				}
@@ -138,16 +138,16 @@ void node::disconnect(int delete_node_id){
 			}
 
 			/*Delete the adj_link to the adjacent node in this node*/
-			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
-			this->adj_node[this->adj_node_count-1] = nullptr;
+//			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
+//			this->adj_node[this->adj_node_count-1] = nullptr;
 
-			std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
+//			std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
 			delete(this->adj_link[index]);
-			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
-			this->adj_link[this->adj_node_count-1] = nullptr;
+//			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
+//			this->adj_link[this->adj_node_count-1] = nullptr;
 
 
-			this->adj_node_count--;
+//			this->adj_node_count--;
 			return;
 		}
 	}

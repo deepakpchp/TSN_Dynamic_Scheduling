@@ -6,6 +6,7 @@
 extern node** node_list;
 extern flow* get_flow_ptr_from_id(int flow_id);
 extern link*** conn_link_matrix;
+extern int** conn_matrix;
 
 void link::set_link_id(int link_id){
 	this->link_id = link_id;
@@ -84,14 +85,29 @@ link::~link(){
 	for (int index = 0; index < num_of_flows; index++){
 		flow* flow_to_delete = get_flow_ptr_from_id(flow_ids[index]);
 		if (NULL != flow_to_delete){
-			flow_to_delete->remove_route_and_queue_assignment();
+			flow_to_delete->remove_route_and_queue_assignment(flow::LINK_DELETED);
 		}
 	}
 
     int src_node_id = this->get_src_node_id();
     int dst_node_id = this->get_dst_node_id();
+#if 0
+	node* src_node = node_list[src_node_id];
+	
+	for(unsigned int index = 0; index < src_node->get_adj_node_count(); index++){
+		if(src_node->adj_node[index]->get_node_id() == dst_node_id){
+			src_node->adj_node[index] = src_node->adj_node[src_node->adj_node_count-1];
+			src_node->adj_node[src_node->adj_node_count-1] = nullptr;
+
+			src_node->adj_link[index] = src_node->adj_link[src_node->adj_node_count-1];
+			src_node->adj_link[src_node->adj_node_count-1] = nullptr;
+			src_node->adj_node_count--;
+		}
+	}
+	
+#endif
     conn_link_matrix[src_node_id][dst_node_id] = nullptr;
-    conn_link_matrix[dst_node_id][src_node_id] = nullptr;
+    conn_matrix[src_node_id][dst_node_id] = 0;
 
 	delete(flow_ids);
 }

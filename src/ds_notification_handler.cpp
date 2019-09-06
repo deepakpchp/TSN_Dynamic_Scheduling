@@ -5,8 +5,10 @@
 #include <vector>
 #include <string>
 #include <ds_link.h>
+#include <ds_flow.h>
 
 extern link*** conn_link_matrix;
+extern flow** flow_list;
 
 /***************************************************************************************************
 class: notification_handler
@@ -101,16 +103,69 @@ int notification_handler::read_modification_request(){
             }
 
         }
+        else if(name == "START_MODIFY_FLOWS"){
+			while(getline(inFile, line)){
+				line.erase(std::remove_if(line.begin(), line.end(), isspace),
+						line.end());
+				if(line == "END_MODIFY_FLOWS"){
+					break;
+				}
+				if(line[0] == '#' || line.empty()){
+					continue;
+				}
+
+
+				const char delim = ',';
+				std::vector<std::string> tokens;
+				auto flow_to_modify = line.substr(1, line.size()-2);
+				tokenize(flow_to_modify, delim, tokens);
+				if(tokens.size() != 6){
+					ERROR("Flow to MODIFY are not configured properly!!\nIgnoring the flow");
+					continue;
+				}
+				std::vector<int> flow_details;
+				for (unsigned int token_index = 0; token_index < 6; token_index++){
+					flow_details.push_back(stoi(tokens[token_index])); 
+				}
+				this->flows_to_modify.push_back(flow_details);
+			}
+		}
+        else if(name == "START_ADD_FLOWS"){
+			while(getline(inFile, line)){
+				line.erase(std::remove_if(line.begin(), line.end(), isspace),
+						line.end());
+				if(line == "END_ADD_FLOWS"){
+					break;
+				}
+				if(line[0] == '#' || line.empty()){
+					continue;
+				}
+
+
+				const char delim = ',';
+				std::vector<std::string> tokens;
+				auto flow_to_add = line.substr(1, line.size()-2);
+				tokenize(flow_to_add, delim, tokens);
+				if(tokens.size() != 5){
+					ERROR("Flow to ADD are not configured properly!!\nIgnoring the flow");
+					continue;
+				}
+				std::vector<int> flow_details;
+				for (unsigned int token_index = 0; token_index < 5; token_index++){
+					flow_details.push_back(stoi(tokens[token_index])); 
+				}
+				this->flows_to_add.push_back(flow_details);
+			}
+		}
     }
     return SUCCESS;
 }
 
 /***************************************************************************************************
-//TODO
-class: 
-Function Name: 
+class: notification_handler 
+Function Name: print
 
-Description:  
+Description: Print the details the modification requests received from the notification
 
 Return: None
 ***************************************************************************************************/
@@ -127,5 +182,50 @@ void notification_handler::print(){
     for(auto &link_id: links_to_delete) {
         std::cout<<link_id<<" ";
     }
+    std::cout<<std::endl<<"Flows to add: ";
+	for(auto &flow_ids: flows_to_add) {
+		for(auto &flow_id: flow_ids) {
+			std::cout<<flow_id<<",";
+		}
+		std::cout<<"   ";
+	}
+    std::cout<<std::endl<<"Flows to modify: ";
+	for(auto &flow_ids: flows_to_modify) {
+		for(auto &flow_id: flow_ids) {
+			std::cout<<flow_id<<",";
+		}
+		std::cout<<"   ";
+	}
     std::cout<<std::endl;
 }
+
+/***************************************************************************************************
+//TODO
+class: 
+Function Name: 
+
+Description:  
+
+Return: None
+***************************************************************************************************/
+void notification_handler::process_notification(){
+    for(auto &flow_id: flows_to_delete) {
+		for (int index = 0; index < MAX_NUM_FLOWS; index++){
+			if (nullptr == flow_list[index]){
+				continue;
+			}
+
+			if (flow_id == flow_list[index]->get_flow_id()){
+				delete(flow_list[index]);
+				INFO("Successfully Deleted Flow ID:"<<flow_id);
+				break;
+			}
+
+		}
+		ERROR("Trying to delete Flow ID:"<<flow_id<<" doesnt exist" );
+    }
+		
+
+
+}
+
