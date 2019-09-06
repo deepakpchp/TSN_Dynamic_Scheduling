@@ -2,9 +2,11 @@
 #define DS_NODE_H
 
 #include <ds_link.h>
+#include<cmath>
 
 #define MAX_NODES 10
 #define MAX_PORTS 10
+#define MAX_NUM_LINKS  ((int)(pow(2, MAX_NODES) - (2 * MAX_NODES)))
 
 class node {
     private:
@@ -23,6 +25,7 @@ class node {
         node(node_type, int);
         void connect(node*);
         void disconnect(int);
+		void disconnect_one_side(int dst_node_id);
 		void print();
 		int get_node_id();
 		int get_adj_node_count();

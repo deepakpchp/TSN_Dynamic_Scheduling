@@ -1,5 +1,5 @@
-nodes_to_delete={4,5,6}
-links_to_delete={0-1,1-0}
+nodes_to_delete={0}
+links_to_delete={3-4,4-3}
 flows_to_delete={1,2,3}
 
 #{flow_id,src_id,dst_id,dedline,size,period}

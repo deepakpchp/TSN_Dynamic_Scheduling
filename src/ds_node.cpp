@@ -6,7 +6,7 @@ extern link*** conn_link_matrix;
 extern int** conn_matrix;
 extern node** node_list;
 
-link* link_list[100];
+link* link_list[MAX_NUM_LINKS];
 int num_of_links =  0;
 /***************************************************************************************************
 TODO
@@ -117,37 +117,49 @@ void node::disconnect(int delete_node_id){
 			bool deletion_flag = false;
 			for(unsigned int index2 = 0; index2 < adj_node->adj_node_count; index2++){
 				if(adj_node->adj_node[index2]->node_id == this->node_id){
-//					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
-//					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
-					
-//					std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
-					delete(adj_node->adj_link[index2]);
-//					adj_node->adj_link[index2] = adj_node->adj_link[adj_node->adj_node_count-1];
-//					adj_node->adj_link[adj_node->adj_node_count-1] = nullptr;
+					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
+					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
+  				
+					std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
+					/*Link is copied and deleted later because the delete function for link will
+					 call the destructor of the link class which will again try to delete the 
+					 link and update the adjecent node using the dunction delete_one_side for 
+					 the source node. This is done because sometimes when only the link is deleted
+					 the corresponding src nodes adjecent node config has to be updated*/
+  					link* link_to_delete = adj_node->adj_link[index2];
+					adj_node->adj_link[index2] = adj_node->adj_link[adj_node->adj_node_count-1];
+					adj_node->adj_link[adj_node->adj_node_count-1] = nullptr;
 
 
-//					adj_node->adj_node_count--;
+					adj_node->adj_node_count--;
+
+					delete(link_to_delete);
 					deletion_flag = true;
 					break;
 				}
 			}
 			if(false == deletion_flag){
-				ERROR("Unnable to delete the link of node id:"<<this->node_id 
-						<<" in the node :"<<delete_node_id);
-				break;
+				LOG("Link already delete from node id:"<<this->node_id 
+						<<" to node_id:"<<delete_node_id);
 			}
 
 			/*Delete the adj_link to the adjacent node in this node*/
-//			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
-//			this->adj_node[this->adj_node_count-1] = nullptr;
+			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
+			this->adj_node[this->adj_node_count-1] = nullptr;
 
-//			std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
-			delete(this->adj_link[index]);
-//			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
-//			this->adj_link[this->adj_node_count-1] = nullptr;
+			std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
+			/*Link is copied and deleted later because the delete function for link will
+			 call the destructor of the link class which will again try to delete the 
+			 link and update the adjecent node using the dunction delete_one_side for 
+			 the source node. This is done because sometimes when only the link is deleted
+			 the corresponding src nodes adjecent node config has to be updated*/
+			link* link_to_delete = this->adj_link[index];
+			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
+			this->adj_link[this->adj_node_count-1] = nullptr;
+			this->adj_node_count--;
 
+			delete(link_to_delete);
 
-//			this->adj_node_count--;
 			return;
 		}
 	}
@@ -155,6 +167,33 @@ void node::disconnect(int delete_node_id){
 
 }
 
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+void node::disconnect_one_side(int dst_node_id){
+	for(unsigned int index = 0; index < this->adj_node_count; index++){
+		if(this->adj_node[index]->node_id == dst_node_id){
+
+			/*Delete the adj_link to the adjacent node in this node*/
+			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
+			this->adj_node[this->adj_node_count-1] = nullptr;
+			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
+			this->adj_link[this->adj_node_count-1] = nullptr;
+
+
+			this->adj_node_count--;
+			return;
+		}
+	}
+	//std::cout<<"Either link already deleted or doesnt exist Node id:"<<dst_node_id<<std::endl;
+
+}
 /***************************************************************************************************
 TODO
 class: 

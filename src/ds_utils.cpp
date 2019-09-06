@@ -121,11 +121,11 @@ int linked_list::remove(int n){
         return FAILURE;
     }
     list_node *temp = head;
-    list_node *pre = head;
+    list_node *prev = head;
 
     if (n == temp->data){
-        delete(temp);
         head = temp->next;
+        delete(temp);
         count--;
         if(count == 0){
             tail = NULL;
@@ -137,12 +137,13 @@ int linked_list::remove(int n){
     temp = temp->next;
     while (temp != NULL){
         if (n == temp->data){
-            pre->next = temp->next;
+            prev->next = temp->next;
             delete(temp);
             count--;
             return SUCCESS;
         }
         temp = temp->next;
+		prev = prev->next;
     }
     return FAILURE;
 }

@@ -46,6 +46,9 @@ flow::~flow(){
 	}
 	bool delete_status_flag = false;
 	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (nullptr == flow_list[index]){
+			continue;
+		}
 		if (this->get_flow_id() == flow_list[index]->get_flow_id()){
 			flow_list[index] = nullptr;
 			delete_status_flag = true;

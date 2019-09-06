@@ -201,9 +201,11 @@ Return:
 int get_link_id(int src_node_id, int dst_node_id){
 
 	for (int index = 0; index < num_of_links; index++){
-		if((src_node_id == link_list[index]->get_src_node_id()) && 
-				(dst_node_id == link_list[index]->get_dst_node_id())){
-			return index;
+		if (nullptr != link_list[index]){
+			if((src_node_id == link_list[index]->get_src_node_id()) && 
+					(dst_node_id == link_list[index]->get_dst_node_id())){
+				return index;
+			}
 		}
 
 	}
@@ -312,9 +314,9 @@ int main(){
 		}
 	}
 
+//	delete(link_list[19]);
 //	delete_node(7);
 //	delete(node_list[7]);
-	delete(link_list[19]);
 	cout<<endl;
 	for(int index = 0; index < config.get_num_of_flows(); index++){
 		if (NULL != flow_list[index]){
@@ -332,6 +334,17 @@ int main(){
     notification_handler notification_handler_obj;
     notification_handler_obj.read_modification_request();
     notification_handler_obj.print();
+	notification_handler_obj.process_notification();
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
 	return 0;
 }
 

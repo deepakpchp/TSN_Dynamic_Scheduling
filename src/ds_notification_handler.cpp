@@ -6,9 +6,12 @@
 #include <string>
 #include <ds_link.h>
 #include <ds_flow.h>
+#include <ds_node.h>
 
 extern link*** conn_link_matrix;
 extern flow** flow_list;
+extern link* link_list[];
+extern node** node_list;
 
 /***************************************************************************************************
 class: notification_handler
@@ -210,22 +213,72 @@ Return: None
 ***************************************************************************************************/
 void notification_handler::process_notification(){
     for(auto &flow_id: flows_to_delete) {
+
+		bool delete_flag = false;
 		for (int index = 0; index < MAX_NUM_FLOWS; index++){
 			if (nullptr == flow_list[index]){
 				continue;
 			}
 
 			if (flow_id == flow_list[index]->get_flow_id()){
+				flow_list[index]->set_reservation_status(flow::DELETE_FLOW);
 				delete(flow_list[index]);
+				delete_flag = true;
 				INFO("Successfully Deleted Flow ID:"<<flow_id);
 				break;
 			}
 
 		}
-		ERROR("Trying to delete Flow ID:"<<flow_id<<" doesnt exist" );
+		if(false == delete_flag){
+			ERROR("Trying to delete Flow ID:"<<flow_id<<" doesnt exist" );
+		}
     }
 		
+    std::cout<<std::endl<<"Links to delete: ";
+    for(auto &link_id: links_to_delete) {
+		bool delete_flag = false;
+		for (int index = 0; index < MAX_NUM_LINKS; index++){
+			if (nullptr == link_list[index]){
+				continue;
+			}
 
+			if (link_id == link_list[index]->get_link_id()){
+				delete(link_list[index]);
+				delete_flag = true;
+				INFO("Successfully Deleted Link ID:"<<link_id);
+				break;
+			}
+
+		}
+		if(false == delete_flag){
+			ERROR("Trying to delete Link ID:"<<link_id<<" doesnt exist" );
+		}
+
+        std::cout<<link_id<<" ";
+    }
+
+    std::cout<<std::endl<<"Nodes to delete: ";
+    for(auto &node_id: nodes_to_delete) {
+		bool delete_flag = false;
+		for (int index = 0; index < MAX_NUM_LINKS; index++){
+			if (nullptr == node_list[index]){
+				continue;
+			}
+
+			if (node_id == node_list[index]->get_node_id()){
+				delete(node_list[index]);
+				delete_flag = true;
+				INFO("Successfully Deleted Node ID:"<<node_id);
+				break;
+			}
+
+		}
+		if(false == delete_flag){
+			ERROR("Trying to delete Node ID:"<<node_id<<" doesnt exist" );
+		}
+
+        std::cout<<node_id<<" ";
+    }
 
 }
 

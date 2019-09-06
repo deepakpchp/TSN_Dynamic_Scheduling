@@ -7,6 +7,7 @@ extern node** node_list;
 extern flow* get_flow_ptr_from_id(int flow_id);
 extern link*** conn_link_matrix;
 extern int** conn_matrix;
+extern link* link_list[MAX_NUM_LINKS];
 
 void link::set_link_id(int link_id){
 	this->link_id = link_id;
@@ -80,8 +81,6 @@ Return: None
 link::~link(){
 	int* flow_ids = NULL;
 	int num_of_flows =  this->get_passing_flow_ids(&flow_ids);
-	std::cout<<"In link destructor num_of_flows:"<<num_of_flows<<" link_id:"<<this->get_link_id();
-	std::cout<<"\n";
 	for (int index = 0; index < num_of_flows; index++){
 		flow* flow_to_delete = get_flow_ptr_from_id(flow_ids[index]);
 		if (NULL != flow_to_delete){
@@ -91,23 +90,21 @@ link::~link(){
 
     int src_node_id = this->get_src_node_id();
     int dst_node_id = this->get_dst_node_id();
-#if 0
+	
 	node* src_node = node_list[src_node_id];
-	
-	for(unsigned int index = 0; index < src_node->get_adj_node_count(); index++){
-		if(src_node->adj_node[index]->get_node_id() == dst_node_id){
-			src_node->adj_node[index] = src_node->adj_node[src_node->adj_node_count-1];
-			src_node->adj_node[src_node->adj_node_count-1] = nullptr;
+	src_node->disconnect_one_side(dst_node_id);
 
-			src_node->adj_link[index] = src_node->adj_link[src_node->adj_node_count-1];
-			src_node->adj_link[src_node->adj_node_count-1] = nullptr;
-			src_node->adj_node_count--;
-		}
-	}
-	
-#endif
     conn_link_matrix[src_node_id][dst_node_id] = nullptr;
     conn_matrix[src_node_id][dst_node_id] = 0;
+
+	for (int index = 0; index < MAX_NUM_LINKS; index++){
+		if(nullptr != link_list[index]){
+			if (link_list[index]->get_link_id() == this->link_id){
+				link_list[index] = nullptr;
+				break;
+			}
+		}
+	}
 
 	delete(flow_ids);
 }
