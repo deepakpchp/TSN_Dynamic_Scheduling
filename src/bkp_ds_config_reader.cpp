@@ -108,16 +108,17 @@ Description:
 Return:
 ***************************************************************************************************/
 int configuration::read_flow_config(){
-		std::ifstream inFile("../configuration/flows.txt");
-		if(inFile.is_open()){
-			this->num_of_flows = std::count(std::istreambuf_iterator<char>(inFile),
+		std::ifstream cFile("../configuration/flows.txt");
+		if(cFile.is_open()){
+			this->num_of_flows = std::count(std::istreambuf_iterator<char>(cFile),
 					std::istreambuf_iterator<char>(), '\n');
-			inFile.close();
+		//	cFile.close();
 		}
 		else {
 			std::cerr << "Couldn't open config file for reading.\n";
+            return FAILURE;
 		}
-		std::ifstream cFile ("../configuration/flows.txt");
+		//cFile ("../configuration/flows.txt");
 		if (0 < this->num_of_flows)
 		{
 			this->reservation_availability= new bool[this->num_of_flows];
@@ -211,7 +212,7 @@ int configuration::read_flow_config(){
 		else {
 			std::cerr << "Flow configuration file is empty!!!\nPlease configure the flows and try again \n";
 		}
-	return 0;
+	return SUCCESS;
 }
 
 /***************************************************************************************************

@@ -10,6 +10,8 @@ OBJ_FILES += ds_link.o
 OBJ_FILES += ds_flow.o
 OBJ_FILES += ds_config_reader.o
 OBJ_FILES += ds_route.o
+OBJ_FILES += ds_mr_handler.o
+OBJ_FILES += ds_utils.o
 
 default: scheduler
 
@@ -44,6 +46,14 @@ ds_config_reader.o:  $(SRC_PATH)/ds_config_reader.cpp
 ds_route.o:  $(SRC_PATH)/ds_route.cpp 
 	@echo "compiling $@"
 	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_route.cpp -o $(OBJ_PATH)/ds_route.o -I $(INCLUDE_PATH)
+
+ds_mr_handler.o:  $(SRC_PATH)/ds_mr_handler.cpp 
+	@echo "compiling $@"
+	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_mr_handler.cpp -o $(OBJ_PATH)/ds_mr_handler.o -I $(INCLUDE_PATH)
+
+ds_utils.o:  $(SRC_PATH)/ds_utils.cpp 
+	@echo "compiling $@"
+	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_utils.cpp -o $(OBJ_PATH)/ds_utils.o -I $(INCLUDE_PATH)
 
 clean: 
 	@$(RM) $(default) $(OBJ_PATH)/*.o *~

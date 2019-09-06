@@ -1,10 +1,11 @@
-#include <ds.h>
+#include <ds_utils.h>
 #include <ds_node.h>
 #include <ds_link.h>
 #include <ds_flow.h>
 
 extern node** node_list;
 extern flow* get_flow_ptr_from_id(int flow_id);
+extern link*** conn_link_matrix;
 
 void link::set_link_id(int link_id){
 	this->link_id = link_id;
@@ -86,7 +87,12 @@ link::~link(){
 			flow_to_delete->remove_route_and_queue_assignment();
 		}
 	}
-	
+
+    int src_node_id = this->get_src_node_id();
+    int dst_node_id = this->get_dst_node_id();
+    conn_link_matrix[src_node_id][dst_node_id] = nullptr;
+    conn_link_matrix[dst_node_id][src_node_id] = nullptr;
+
 	delete(flow_ids);
 }
 /***************************************************************************************************

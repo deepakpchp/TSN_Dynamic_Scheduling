@@ -1,10 +1,11 @@
-#include <ds.h>
+#include <ds_utils.h>
 #include <ds_scheduler.h>
 #include <ds_node.h>
 #include <ds_link.h>
 #include <ds_flow.h>
 #include <ds_route.h>
 #include <ds_config_reader.h>
+#include <ds_mr_handler.h>
 
 
 using namespace std;
@@ -323,7 +324,9 @@ int main(){
 	}
 
 	//	delete_link();
-
+    mr_handler mr_handler_obj;
+    mr_handler_obj.read_modification_request();
+    mr_handler_obj.print();
 	return 0;
 }
 

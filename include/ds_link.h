@@ -1,6 +1,6 @@
 #ifndef DS_LINK_H
 #define DS_LINK_H
-#include <ds.h>
+#include <ds_utils.h>
 
 #define HYPER_PERIOD 8
 #define QUEUES_PER_PORT 8
