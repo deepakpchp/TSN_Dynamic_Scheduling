@@ -227,127 +227,6 @@ int delete_flow(int flow_index){
 	return 0;
 }
 
-/***************************************************************************************************
-TODO
-class: 
-Function Name: 
-
-Description: 
-
-Return:
-***************************************************************************************************/
-int main(){
-
-	configuration config("../input.txt");
-
-	if (read_and_configure_nodes(&config)){
-		cerr<<"Something went wrong in read_and_configure_nodes.\nExiting the program\n";
-		exit (0);
-	}
-
-	if (read_and_configure_flows(&config)){
-		cerr<<"Something went wrong in read_and_configure_flows.\nExiting the program\n";
-		exit (0);
-	}
-
-
-	for (int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-
-	for (int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-
-	for (int index = 0; index < config.get_num_of_flows(); index++){
-		if (flow::DELETE_FLOW == flow_list[index]->get_reservation_status()){
-			delete_flow(index);
-		}
-	}
-
-	print_conn_link_matrix_details(&config);
-
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if(flow::SCHEDULED != flow_list[index]->get_reservation_status() && 
-				flow::DELETE_FLOW != flow_list[index]->get_reservation_status()){
-			int ret_val = 0;
-			ret_val = schedule_flow(index);
-			if (SUCCESS != ret_val){
-				ERROR("Unnable to schedule the below mentioned flow\n");
-				if (NULL != flow_list[index]){
-					flow_list[index]->print();
-				}
-			}
-			else {
-				INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
-				//				flow_list[index]->print();
-			}
-		}
-	}
-
-	cout<<endl;
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-
-//	delete(link_list[19]);
-//	delete_node(7);
-//	delete(node_list[7]);
-	cout<<endl;
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-
-	//	delete_link();
-    notification_handler notification_handler_obj;
-    notification_handler_obj.read_modification_request();
-    notification_handler_obj.print();
-	notification_handler_obj.process_notification();
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-	return 0;
-}
-
 
 /***************************************************************************************************
 class: 
@@ -514,21 +393,51 @@ int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** k_pat
 
 
 /***************************************************************************************************
-TODO
-class: 
-Function Name: 
+class:  
+Function Name: schedule_flow
 
-Description: 
+Description: This function will try to schedule the flow with id flow_id (passed as parameter).
+			 Step1: Generate a new connectivity matrix with only required links.
+			 Step2: Discover k-shortest path using the new connectivity matrix
+			 Step3: Rank the flows based on various attributes.
+			 Step4: Try to schedule from the best ranked route. If Successful then return otherwise 
+			 		try next ranked route until all the k-paths are exaused. If none of them can be
+					scheduled then return FAILURE
 
-Return:
+Return: Return: 0 - Successful, 1 Failure 
 ***************************************************************************************************/
-int schedule_flow(int flow_index){
-	flow* flow_to_schedule = flow_list[flow_index];
+int schedule_flow(int flow_id){
+
+	flow* flow_to_schedule = nullptr;
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (nullptr == flow_list[index]){
+			continue;
+		}
+		if (flow_id == flow_list[index]->get_flow_id()){
+			flow_to_schedule = flow_list[index];
+		}
+	}
+	
+
+	if (nullptr == flow_to_schedule){
+		ERROR("Trying to schedule Flow id:"<<flow_id<<" which doesn't exist");
+		return FAILURE;
+	}
 
 	//int* route = get_route();
 	// int route[2][5] = {{8, 7, 3, 1, 0},
 	// {9, 7, 3, 5, 6}};
+	
+	if (flow::SCHEDULED == flow_to_schedule->get_reservation_status()){
+		INFO("Flow already scheduled");
+		std::cout<<"++++++++++++++++++++++++++++++\n";
+		return SUCCESS;
+	}
 
+	if (flow::DELETE_FLOW == flow_to_schedule->get_reservation_status()){
+		INFO("Trying to schedule a flow which is ment to be deleted");
+		return FAILURE;
+	}
 
 	int** tmp_conn_matrix =  new int*[g_num_of_nodes] ;
 	for (int index = 0; index < g_num_of_nodes; index++){
@@ -803,14 +712,14 @@ int delete_node(int node_id){
 /***************************************************************************************************
 TODO
 class: 
-Function Name: 
+Function Name: get_flow_ptr_from_id 
 
 Description: 
 
 Return:
 ***************************************************************************************************/
 flow* get_flow_ptr_from_id(int flow_id){
-	for (int index = 0; index < g_num_of_flows; index++){
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
 		if( NULL != flow_list[index]){
 			if(flow_id == flow_list[index]->get_flow_id()){
 				return flow_list[index];
@@ -818,6 +727,158 @@ flow* get_flow_ptr_from_id(int flow_id){
 		}
 	}
 
-	ERROR("Trying to retrive the flow with flow_id:"<<flow_id<<" which doesnt exist.");
+	//ERROR("Trying to retrive the flow with flow_id:"<<flow_id<<" which doesnt exist.");
 	return NULL;
 }
+
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+int main(){
+
+	configuration config("../input.txt");
+
+	if (read_and_configure_nodes(&config)){
+		cerr<<"Something went wrong in read_and_configure_nodes.\nExiting the program\n";
+		exit (0);
+	}
+
+	if (read_and_configure_flows(&config)){
+		cerr<<"Something went wrong in read_and_configure_flows.\nExiting the program\n";
+		exit (0);
+	}
+
+
+	for (int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+
+	for (int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+
+	for (int index = 0; index < config.get_num_of_flows(); index++){
+		if (flow::DELETE_FLOW == flow_list[index]->get_reservation_status()){
+			delete_flow(index);
+		}
+	}
+
+	print_conn_link_matrix_details(&config);
+#if 0
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+#endif
+
+	for(int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (nullptr == flow_list[index]){
+			continue;
+		}
+
+		if(flow::SCHEDULED != flow_list[index]->get_reservation_status() && 
+				flow::DELETE_FLOW != flow_list[index]->get_reservation_status()){
+			int ret_val = 0;
+			ret_val = schedule_flow(flow_list[index]->get_flow_id());
+			if (SUCCESS != ret_val){
+				ERROR("Unnable to schedule the below mentioned flow\n");
+				flow_list[index]->print();
+			}
+			else {
+				INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
+				//				flow_list[index]->print();
+			}
+		}
+	}
+
+	cout<<endl;
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+#if 0
+//	delete(link_list[19]);
+//	delete_node(7);
+//	delete(node_list[7]);
+	cout<<endl;
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+	//	delete_link();
+#endif
+    notification_handler notification_handler_obj;
+    notification_handler_obj.read_modification_request();
+    notification_handler_obj.print();
+	notification_handler_obj.process_notification();
+	for(int index = 0; index < config.get_num_of_flows(); index++){
+		if (NULL != flow_list[index]){
+			flow_list[index]->print();
+		}
+	}
+	for(int index = 0; index < config.get_num_of_nodes(); index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+
+	std::vector<flow*> flows_to_schedule;
+	
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (nullptr == flow_list[index]){
+			continue;
+		}
+		if(flow::SCHEDULED != flow_list[index]->get_reservation_status() && 
+				flow::DELETE_FLOW != flow_list[index]->get_reservation_status()){
+			flows_to_schedule.push_back( flow_list[index]);
+		}
+	}
+
+	for (unsigned int index = 0; index < flows_to_schedule.size(); index++){
+		std::cout<<"Flow to schedule id:"<<flows_to_schedule[index]->get_flow_id()<<"\n";
+		int ret_val = 0;
+		ret_val = schedule_flow(flows_to_schedule[index]->get_flow_id());
+		if (SUCCESS != ret_val){
+			ERROR("Unnable to schedule the below mentioned flow\n");
+			flows_to_schedule[index]->print();
+			cout<<"#################\n";
+		}
+		else {
+			INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
+							flows_to_schedule[index]->print();
+		}
+	}
+	return 0;
+}
+

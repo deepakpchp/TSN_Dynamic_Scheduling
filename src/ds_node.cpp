@@ -36,7 +36,7 @@ Description:
 Return:
 ***************************************************************************************************/
 node::~node(){
-	std::cout<<"Disctructor Called\n";
+	std::cout<<"Destructor Called\n";
 	unsigned adj_node_count = this->adj_node_count;
 	for(unsigned int index = 0; index < adj_node_count; index++){
 		/*Always index 0 is deleted because everytime adj node in index  0 is deleted, 
@@ -120,7 +120,7 @@ void node::disconnect(int delete_node_id){
 					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
 					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
   				
-					std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
+					//std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
 					/*Link is copied and deleted later because the delete function for link will
 					 call the destructor of the link class which will again try to delete the 
 					 link and update the adjecent node using the dunction delete_one_side for 
@@ -147,7 +147,7 @@ void node::disconnect(int delete_node_id){
 			this->adj_node[index] = this->adj_node[this->adj_node_count-1];
 			this->adj_node[this->adj_node_count-1] = nullptr;
 
-			std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
+			//std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
 			/*Link is copied and deleted later because the delete function for link will
 			 call the destructor of the link class which will again try to delete the 
 			 link and update the adjecent node using the dunction delete_one_side for 

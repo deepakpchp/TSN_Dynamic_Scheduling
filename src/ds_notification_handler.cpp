@@ -173,6 +173,7 @@ Description: Print the details the modification requests received from the notif
 Return: None
 ***************************************************************************************************/
 void notification_handler::print(){
+	std::cout<<"\n\n############################################################################\n";
     std::cout<<"Flows to delete: ";
     for(auto &flow_id: flows_to_delete) {
         std::cout<<flow_id<<" ";
@@ -199,7 +200,7 @@ void notification_handler::print(){
 		}
 		std::cout<<"   ";
 	}
-    std::cout<<std::endl;
+	std::cout<<"\n############################################################################\n";
 }
 
 /***************************************************************************************************
@@ -214,6 +215,7 @@ Return: None
 void notification_handler::process_notification(){
     for(auto &flow_id: flows_to_delete) {
 
+		/*Delete all the flows that are ment to be deleted*/
 		bool delete_flag = false;
 		for (int index = 0; index < MAX_NUM_FLOWS; index++){
 			if (nullptr == flow_list[index]){
@@ -234,7 +236,9 @@ void notification_handler::process_notification(){
 		}
     }
 		
-    std::cout<<std::endl<<"Links to delete: ";
+    std::cout<<"\n";
+	/*Delete all the links that are ment to be deleted. Reservation of all the flows that are 
+	  passing theough these links will be removed and the flows are marked for scheduling later*/
     for(auto &link_id: links_to_delete) {
 		bool delete_flag = false;
 		for (int index = 0; index < MAX_NUM_LINKS; index++){
@@ -254,10 +258,10 @@ void notification_handler::process_notification(){
 			ERROR("Trying to delete Link ID:"<<link_id<<" doesnt exist" );
 		}
 
-        std::cout<<link_id<<" ";
     }
-
-    std::cout<<std::endl<<"Nodes to delete: ";
+    std::cout<<"\n";
+	/*Delete all the nodes that are ment to be deleted. Reservation of all the flows that are 
+	  passing through  these links will be removed and the flows are marked for scheduling later*/
     for(auto &node_id: nodes_to_delete) {
 		bool delete_flag = false;
 		for (int index = 0; index < MAX_NUM_LINKS; index++){
@@ -277,8 +281,82 @@ void notification_handler::process_notification(){
 			ERROR("Trying to delete Node ID:"<<node_id<<" doesnt exist" );
 		}
 
-        std::cout<<node_id<<" ";
     }
+
+    std::cout<<"\n";
+	for(auto &flow_details: flows_to_modify) {
+		/*{flow_id,src_id,dst_id,dedline,size,period}*/
+		if (6 != flow_details.size()){
+			ERROR("Flow to be modified is not configured properly Flow_id:"<<flow_details[0]);
+			continue;
+		}
+
+		int details[6] = {-1};
+		int index = 0;
+		for(auto &flow_info: flow_details) {
+			details[index++] = flow_info;
+		}
+		
+		flow* flow_to_modify = nullptr;
+		bool flow_find_flag = false;
+		for (int index = 0; index < MAX_NUM_FLOWS; index++){
+
+			if (nullptr != flow_list[index] && details[0] == flow_list[index]->get_flow_id()){
+				flow_to_modify = flow_list[index];
+				flow_find_flag = true;
+				break;
+			}
+		}
+			
+		if (false == flow_find_flag){
+			ERROR("Flow requested to be modified doesnt exist Flow_id:"<<details[0]);
+			continue;
+		}
+
+		flow_to_modify->set_src_node_id(details[1]);
+		flow_to_modify->set_dst_node_id(details[2]);
+		flow_to_modify->set_deadline(details[3]);
+		flow_to_modify->set_size(details[4]);
+		flow_to_modify->set_period(details[5]);
+		if (flow::SCHEDULED == flow_to_modify->get_reservation_status()){
+			flow_to_modify->set_reservation_status(flow::MODIFIED);
+		}
+		else {
+			flow_to_modify->set_reservation_status(flow::NEW);
+		}
+
+		INFO("Successfully Modified Flow Id:"<<details[0]);
+	}
+    std::cout<<"\n";
+	for(auto &flow_details: flows_to_add) {
+		/*{src_id,dst_id,dedline,size,period}*/
+		if (5 != flow_details.size()){
+			ERROR("Flow to be added is not configured properly Flow_id:"<<flow_details[0]);
+			continue;
+		}
+
+		int details[5] = {-1};
+		int info_index = 0;
+		for(auto &flow_info: flow_details) {
+			details[info_index++] = flow_info;
+		}
+		
+		bool flow_added = false;
+		flow* flow_to_add = new flow(details[0], details[1], details[2], details[3], details[4]);
+		for (int index = 0; index < MAX_NUM_FLOWS; index++){
+			if (nullptr == flow_list[index]){
+				flow_list[index] = flow_to_add;
+				flow_added = true;
+				break;
+			}
+		}
+		if (false == flow_added){
+			ERROR("Max number of flows reached. No more flows can be added");	
+			break;
+		}
+		INFO("Successfully Added Flow Id:"<<flow_to_add->get_flow_id());
+	}
+	std::cout<<"\n";
 
 }
 

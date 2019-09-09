@@ -5,12 +5,12 @@ flows_to_delete={1,2,3}
 #{flow_id,src_id,dst_id,dedline,size,period}
 START_MODIFY_FLOWS
 {0,8,0,6,1,4}
-{1,8,1,4,1,8}
+{6,8,1,4,1,8}
 END_MODIFY_FLOWS
 
 #{src_id,dst_id,dedline,size,period}
 START_ADD_FLOWS
-{8,1,4,1,8}
-{8,1,4,1,8}
-{8,1,4,1,8}
+{6,1,6,1,8}
+{6,1,8,1,8}
+{2,1,8,1,8}
 END_ADD_FLOWS
