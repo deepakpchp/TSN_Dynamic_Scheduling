@@ -1,6 +1,6 @@
 #ifndef DS_FLOW_H
 #define DS_FLOW_H
-#include <ds_link.h>
+#include <ds_egress_link.h>
 #include <ds_utils.h>
 #define MAX_NUM_FLOWS 50
 
@@ -17,7 +17,7 @@ class flow{
 
 		int* route;
 		int* assigned_time_slot;
-		link::queue_reservation_state* state;
+		egress_link::queue_reservation_state* state;
 		int* route_queue_assignment;
 		int reservation_length;
 	public:
@@ -41,7 +41,7 @@ class flow{
 		void set_period(int period);
 		void set_route(int *route, int reservation_length);
 		void set_assigned_time_slot(int* assigned_time_slot, int reservation_length);
-		void set_state(link::queue_reservation_state *state, int reservation_length);
+		void set_state(egress_link::queue_reservation_state *state, int reservation_length);
 		void set_route_queue_assignment(int* route_queue_assignment, int reservation_length);
 
 		int get_flow_id();
@@ -54,7 +54,7 @@ class flow{
 		int* get_route();
 		int* get_assigned_time_slot();
 		int* get_route_queue_assignment();
-		link::queue_reservation_state* get_state();
+		egress_link::queue_reservation_state* get_state();
 		int get_reservation_length();
 
 		void delete_assigned_time_slot();
@@ -64,7 +64,9 @@ class flow{
 
 
 		void print();
-		void assign_route_and_queue(int* assigned_time_slot, int* route, int* route_queue_assignment, link::queue_reservation_state state[], int reservation_length);
+		void assign_route_and_queue(int* assigned_time_slot, int* route, 
+				int* route_queue_assignment, egress_link::queue_reservation_state state[], 
+				int reservation_length);
 		void remove_route_and_queue_assignment(flow::reservation_state new_state);
 };
 #endif

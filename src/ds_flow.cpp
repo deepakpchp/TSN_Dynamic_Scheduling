@@ -2,7 +2,7 @@
 #include <ds_utils.h>
 #include <ds_flow.h>
 
-extern link* link_list[];
+extern egress_link* link_list[];
 extern flow** flow_list;
 
 using namespace std;
@@ -49,7 +49,9 @@ flow::~flow(){
 		if (nullptr == flow_list[index]){
 			continue;
 		}
+
 		if (this->get_flow_id() == flow_list[index]->get_flow_id()){
+			flow_list[index]->remove_route_and_queue_assignment(flow::DELETE_FLOW);
 			flow_list[index] = nullptr;
 			delete_status_flag = true;
 			break;
@@ -104,9 +106,9 @@ void flow::set_route(int *route, int reservation_length){
 	}
 }
 
-void flow::set_state(link::queue_reservation_state *state, int reservation_length){
+void flow::set_state(egress_link::queue_reservation_state *state, int reservation_length){
 	this->reservation_length = reservation_length;
-	this->state = new link::queue_reservation_state[this->reservation_length];
+	this->state = new egress_link::queue_reservation_state[this->reservation_length];
 	for (int index = 0; index < reservation_length; index++){
 		this->state[index] = state[index];
 	}
@@ -162,7 +164,7 @@ int* flow::get_route_queue_assignment() {
 	return this->route_queue_assignment;
 }
 
-link::queue_reservation_state* flow::get_state(){
+egress_link::queue_reservation_state* flow::get_state(){
 	return this->state;
 }
 
@@ -263,11 +265,11 @@ void flow::print(){
 		int* route = this->get_route();
 		int* route_queue_assignment = this->get_route_queue_assignment();
 		int* assigned_time_slot = this->get_assigned_time_slot();
-		link::queue_reservation_state* state = this->get_state();
+		egress_link::queue_reservation_state* state = this->get_state();
 		cout<<"\nReservation Length: "<<reservation_length<<endl<<"Route: ";
 
 		for (int index = 0; index < this->reservation_length; index ++){
-			if(link::WAITING == state[index]){
+			if(egress_link::WAITING == state[index]){
 				cout<<"W";
 			}
 			else{
@@ -286,13 +288,13 @@ Function Name: assign_route_and_queue
 			   
 Description: This function will assigne the time slot assignment, route details and 
 			 queue assignemt for the flow along the route for the flow. This will also call the
-			 update_gcl functions of the links along the route to update the Gate control list and
-			 queue assignments of corresponding links.
+			 update_gcl functions of the egress_links along the route to update the Gate control list and
+			 queue assignments of corresponding egress_links.
 
 Return: None 
 ***************************************************************************************************/
 void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* route_queue_assignment,
-		link::queue_reservation_state* state, int reservation_length){
+		egress_link::queue_reservation_state* state, int reservation_length){
 
 	/*Update the flow object with the reseration details*/
 	this->set_assigned_time_slot(assigned_time_slot, reservation_length);
@@ -300,12 +302,12 @@ void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* rout
 	this->set_state(state, reservation_length);
 	this->set_route_queue_assignment(route_queue_assignment, reservation_length);
 
-	/*Update the gate control list on all the links along the route*/
+	/*Update the gate control list on all the egress_links along the route*/
 	for(int index = 0; index < reservation_length; index++){
 		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) 
 				&& (assigned_time_slot[index] >= 0)){
 
-            if (link::OPEN == state[index] || link::WAITING == state[index]){
+            if (egress_link::OPEN == state[index] || egress_link::WAITING == state[index]){
 			    link_list[route[index]]->update_gcl(assigned_time_slot[index], 
 						route_queue_assignment[index],this->get_flow_id(), state[index]); 
             }
@@ -327,29 +329,30 @@ void flow::assign_route_and_queue(int* assigned_time_slot, int* route, int* rout
 class: flow 
 Function Name: remove_route_and_queue_assignment
 
-Description: This function will delete the reservation on all the links along the route.
+Description: This function will delete the reservation on all the egress_egress_links along the route.
 
 Return: None
 ***************************************************************************************************/
 void flow::remove_route_and_queue_assignment(flow::reservation_state new_state){
 
-	if (SCHEDULED != this->get_reservation_status()){
+	if (SCHEDULED != this->get_reservation_status() && 
+			DELETE_FLOW != this->get_reservation_status()){
 		ERROR("Trying to delete the schedule of unscheduled flow id:"<<this->get_flow_id());
 		return;
 	}
 
 	int* assigned_time_slot = this->get_assigned_time_slot();
 	int* route = this->get_route();
-	link::queue_reservation_state* state = this->get_state();
+	egress_link::queue_reservation_state* state = this->get_state();
 	int* route_queue_assignment = this->get_route_queue_assignment();
 
 	for(int index = 0; index < this->get_reservation_length(); index++){
 		if ((-1 != route[index]) && (assigned_time_slot[index] < HYPER_PERIOD) 
 				&& (assigned_time_slot[index] >= 0)){
 
-			if (link::OPEN == state[index] || link::WAITING == state[index]){
+			if (egress_link::OPEN == state[index] || egress_link::WAITING == state[index]){
 				link_list[route[index]]->update_gcl(assigned_time_slot[index], 
-					 route_queue_assignment[index], this->get_flow_id(), link::FREE); 
+					 route_queue_assignment[index], this->get_flow_id(), egress_link::FREE); 
 			}
 			else{
 				std::cerr<<"Trying to free invalid reservation in GCL for the flow id: "

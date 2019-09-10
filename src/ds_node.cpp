@@ -2,11 +2,11 @@
 #include <bitset>
 #include <iostream>
 
-extern link*** conn_link_matrix;
+extern egress_link*** conn_link_matrix;
 extern int** conn_matrix;
 extern node** node_list;
 
-link* link_list[MAX_NUM_LINKS];
+egress_link* link_list[MAX_NUM_LINKS];
 int num_of_links =  0;
 /***************************************************************************************************
 TODO
@@ -74,7 +74,7 @@ void node::connect(node* adj_node){
 
 	if(this->adj_node_count < MAX_PORTS){
 		this->adj_node[this->adj_node_count] = adj_node;
-		this->adj_link[this->adj_node_count] = new link(this->node_id, adj_node->node_id);
+		this->adj_link[this->adj_node_count] = new egress_link(this->node_id, adj_node->node_id);
 		conn_link_matrix[this->get_node_id()][adj_node->get_node_id()] = this->adj_link[this->adj_node_count];
 		conn_matrix[this->get_node_id()][adj_node->get_node_id()] = 1;
 
@@ -82,7 +82,7 @@ void node::connect(node* adj_node){
 		this->adj_node_count++;
 		if(adj_node->adj_node_count < MAX_PORTS){
 			adj_node->adj_node[adj_node->adj_node_count] = this;
-			adj_node->adj_link[adj_node->adj_node_count] = new link(adj_node->node_id, this->node_id);
+			adj_node->adj_link[adj_node->adj_node_count] = new egress_link(adj_node->node_id, this->node_id);
 			conn_link_matrix [adj_node->get_node_id()][this->get_node_id()] = adj_node->adj_link[adj_node->adj_node_count];
 			conn_matrix [adj_node->get_node_id()][this->get_node_id()] = 1;
 			link_list[num_of_links++] = adj_node->adj_link[adj_node->adj_node_count];
@@ -112,7 +112,7 @@ Return:
 void node::disconnect(int delete_node_id){
 	for(unsigned int index = 0; index < this->adj_node_count; index++){
 		if(this->adj_node[index]->node_id == delete_node_id){
-			/*Delete the link to this node from the adjacent node in adj node obj*/
+			/*Delete the egress_link to this node from the adjacent node in adj node obj*/
 			node* adj_node = this->adj_node[index];
 			bool deletion_flag = false;
 			for(unsigned int index2 = 0; index2 < adj_node->adj_node_count; index2++){
@@ -120,13 +120,13 @@ void node::disconnect(int delete_node_id){
 					adj_node->adj_node[index2] = adj_node->adj_node[adj_node->adj_node_count-1];
 					adj_node->adj_node[adj_node->adj_node_count-1] = nullptr;
   				
-					//std::cout<<"Deleting link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
+					//std::cout<<"Deleting egress_link:"<<adj_node->adj_link[index2]->get_link_id()<<"\n";
 					/*Link is copied and deleted later because the delete function for link will
-					 call the destructor of the link class which will again try to delete the 
+					 call the destructor of the egress_link class which will again try to delete the 
 					 link and update the adjecent node using the dunction delete_one_side for 
-					 the source node. This is done because sometimes when only the link is deleted
+					 the source node. This is done because sometimes when only the egress_link is deleted
 					 the corresponding src nodes adjecent node config has to be updated*/
-  					link* link_to_delete = adj_node->adj_link[index2];
+  					egress_link* link_to_delete = adj_node->adj_link[index2];
 					adj_node->adj_link[index2] = adj_node->adj_link[adj_node->adj_node_count-1];
 					adj_node->adj_link[adj_node->adj_node_count-1] = nullptr;
 
@@ -148,12 +148,12 @@ void node::disconnect(int delete_node_id){
 			this->adj_node[this->adj_node_count-1] = nullptr;
 
 			//std::cout<<"Deleting link Out:"<<this->adj_link[index]->get_link_id()<<"\n";
-			/*Link is copied and deleted later because the delete function for link will
-			 call the destructor of the link class which will again try to delete the 
-			 link and update the adjecent node using the dunction delete_one_side for 
-			 the source node. This is done because sometimes when only the link is deleted
+			/*Link is copied and deleted later because the delete function for egress_link will
+			 call the destructor of the egress_link class which will again try to delete the 
+			 egress_link and update the adjecent node using the dunction delete_one_side for 
+			 the source node. This is done because sometimes when only the egress_link is deleted
 			 the corresponding src nodes adjecent node config has to be updated*/
-			link* link_to_delete = this->adj_link[index];
+			egress_link* link_to_delete = this->adj_link[index];
 			this->adj_link[index] = this->adj_link[this->adj_node_count-1];
 			this->adj_link[this->adj_node_count-1] = nullptr;
 			this->adj_node_count--;
@@ -163,7 +163,7 @@ void node::disconnect(int delete_node_id){
 			return;
 		}
 	}
-	std::cout<<"Unnable to delete the link to node id :"<<delete_node_id<<std::endl;
+	std::cout<<"Unnable to delete the egress_link to node id :"<<delete_node_id<<std::endl;
 
 }
 
@@ -191,7 +191,7 @@ void node::disconnect_one_side(int dst_node_id){
 			return;
 		}
 	}
-	//std::cout<<"Either link already deleted or doesnt exist Node id:"<<dst_node_id<<std::endl;
+	//std::cout<<"Either egress_link already deleted or doesnt exist Node id:"<<dst_node_id<<std::endl;
 
 }
 /***************************************************************************************************
@@ -211,7 +211,7 @@ void node::print(){
 		int** gcl = this->adj_link[index]->get_gcl();
 		for (int index2 = 0; index2 < HYPER_PERIOD; index2++){
 			for(int index3 = QUEUES_PER_PORT-1; index3 >= 0; index3--){
-                if (link::FREE == gcl[index2][index3]){
+                if (egress_link::FREE == gcl[index2][index3]){
 				    std::cout<<"-";
                 } 
                 else{
@@ -264,16 +264,16 @@ int node::get_flows_through_node(int **passing_flow_ids){
 
 	int flow_count = 0;
 G
-	/*Check all the adj links to get all the flow ids passing through this node */
+	/*Check all the adj egress_links to get all the flow ids passing through this node */
 	for (int adj_index = 0; adj_index < MAX_PORTS; adj_index++){
-		link* adj_link = this->adj_link[adj_index];
+		egress_link* adj_link = this->adj_link[adj_index];
 		int* flow_ids = NULL;
 		int num_of_flows = 0;
 
 		if (adj_link == NULL){
 			continue;
 		}
-		/*get all the flow ids passing through adj link*/
+		/*get all the flow ids passing through adj egress_link*/
 		num_of_flows = adj_link->get_passing_flow_ids(&flow_ids);
 
 		for (int index = 0; index < num_of_flows; index++){
@@ -300,7 +300,7 @@ Description: this function will add the flow id to the list of passing flows tho
 Return: None
 ***************************************************************************************************/
 void node::add_passing_flow_to_list(int flow_id){
-	/*Add the flow to the list of passing flows on the link only if it doesnt already exist*/
+	/*Add the flow to the list of passing flows on the egress_link only if it doesnt already exist*/
 	this->passing_flow_list.add_no_duplicate(flow_id);
 }
 

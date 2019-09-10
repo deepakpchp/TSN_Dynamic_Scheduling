@@ -1,7 +1,7 @@
 #ifndef DS_NODE_H
 #define DS_NODE_H
 
-#include <ds_link.h>
+#include <ds_egress_link.h>
 #include<cmath>
 
 #define MAX_NODES 10
@@ -13,7 +13,7 @@ class node {
         int node_id;
         unsigned int adj_node_count;
         node* adj_node[MAX_PORTS];
-		link* adj_link[MAX_PORTS];
+		egress_link* adj_link[MAX_PORTS];
 		linked_list passing_flow_list;
 
     public:

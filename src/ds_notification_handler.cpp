@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <vector>
 #include <string>
-#include <ds_link.h>
+#include <ds_egress_link.h>
 #include <ds_flow.h>
 #include <ds_node.h>
 
-extern link*** conn_link_matrix;
+extern egress_link*** conn_link_matrix;
 extern flow** flow_list;
-extern link* link_list[];
+extern egress_link* link_list[];
 extern node** node_list;
 
 /***************************************************************************************************
@@ -50,7 +50,7 @@ Description:
 Return: None
 ***************************************************************************************************/
 int notification_handler::read_modification_request(){
-    std::ifstream inFile("../configuration/notification.txt");
+    std::ifstream inFile("notification.txt");
     if(!inFile.is_open()){
         std::cerr << "Couldn't open notification file for reading.\n";
         return FAILURE;
@@ -96,9 +96,9 @@ int notification_handler::read_modification_request(){
                 int src_node_id = stoi(conn_t[0]);
                 int dst_node_id = stoi(conn_t[1]);
 
-                link* link_ptr = conn_link_matrix[src_node_id][dst_node_id];
+                egress_link* link_ptr = conn_link_matrix[src_node_id][dst_node_id];
                 if (nullptr == link_ptr){
-                    ERROR("Trying to delete a link that doesnt exist, src_node_id:"<<src_node_id
+                    ERROR("Trying to delete a egress_link that doesnt exist, src_node_id:"<<src_node_id
                             <<" dst_node_id:"<<dst_node_id);
                     continue;
                 }
@@ -236,9 +236,8 @@ void notification_handler::process_notification(){
 		}
     }
 		
-    std::cout<<"\n";
-	/*Delete all the links that are ment to be deleted. Reservation of all the flows that are 
-	  passing theough these links will be removed and the flows are marked for scheduling later*/
+	/*Delete all the egress_links that are ment to be deleted. Reservation of all the flows that are 
+	  passing theough these egress_links will be removed and the flows are marked for scheduling later*/
     for(auto &link_id: links_to_delete) {
 		bool delete_flag = false;
 		for (int index = 0; index < MAX_NUM_LINKS; index++){
@@ -259,12 +258,11 @@ void notification_handler::process_notification(){
 		}
 
     }
-    std::cout<<"\n";
 	/*Delete all the nodes that are ment to be deleted. Reservation of all the flows that are 
-	  passing through  these links will be removed and the flows are marked for scheduling later*/
+	  passing through  these egress_links will be removed and the flows are marked for scheduling later*/
     for(auto &node_id: nodes_to_delete) {
 		bool delete_flag = false;
-		for (int index = 0; index < MAX_NUM_LINKS; index++){
+		for (int index = 0; index < MAX_NODES; index++){
 			if (nullptr == node_list[index]){
 				continue;
 			}
@@ -283,7 +281,6 @@ void notification_handler::process_notification(){
 
     }
 
-    std::cout<<"\n";
 	for(auto &flow_details: flows_to_modify) {
 		/*{flow_id,src_id,dst_id,dedline,size,period}*/
 		if (6 != flow_details.size()){
@@ -327,7 +324,6 @@ void notification_handler::process_notification(){
 
 		INFO("Successfully Modified Flow Id:"<<details[0]);
 	}
-    std::cout<<"\n";
 	for(auto &flow_details: flows_to_add) {
 		/*{src_id,dst_id,dedline,size,period}*/
 		if (5 != flow_details.size()){
@@ -356,7 +352,5 @@ void notification_handler::process_notification(){
 		}
 		INFO("Successfully Added Flow Id:"<<flow_to_add->get_flow_id());
 	}
-	std::cout<<"\n";
-
 }
 

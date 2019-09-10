@@ -65,7 +65,7 @@ int* configuration::get_route_queue_assignment(int index){
 	return this->route_queue_assignment[index];
 }
 
-link::queue_reservation_state* configuration::get_queue_state(int index){
+egress_link::queue_reservation_state* configuration::get_queue_state(int index){
 	return this->queue_state[index];
 }
 
@@ -127,7 +127,7 @@ int configuration::read_flow_config(){
 			this->assigned_time_slot = new int*[this->num_of_flows];
 			this->route = new int*[this->num_of_flows];
 			this->route_queue_assignment = new int*[this->num_of_flows];
-			this->queue_state = new link::queue_reservation_state*[this->num_of_flows];
+			this->queue_state = new egress_link::queue_reservation_state*[this->num_of_flows];
 
 
 			int flow_index = 0;
@@ -170,7 +170,7 @@ int configuration::read_flow_config(){
 					this->assigned_time_slot[flow_index] = new int[this->reservation_length[flow_index]];
 					this->route[flow_index] = new int[this->reservation_length[flow_index]];
 					this->route_queue_assignment[flow_index] = new int[this->reservation_length[flow_index]];
-					this->queue_state[flow_index] = new link::queue_reservation_state[this->reservation_length[flow_index]];
+					this->queue_state[flow_index] = new egress_link::queue_reservation_state[this->reservation_length[flow_index]];
 
 					for (unsigned int token_index = 0; token_index <  tokens.size() - 6; token_index++){
 						std::vector<std::string> reservation_details;
@@ -189,10 +189,10 @@ int configuration::read_flow_config(){
 						this->route[flow_index][token_index] = stoi(reservation_details[1]);
 						this->route_queue_assignment[flow_index][token_index] = stoi(reservation_details[2]);
 						if("OPEN" == reservation_details[3]){
-							this->queue_state[flow_index][token_index] = link::OPEN;
+							this->queue_state[flow_index][token_index] = egress_link::OPEN;
 						}
 						else if("WAITING" == reservation_details[3]){
-							this->queue_state[flow_index][token_index] = link::WAITING;
+							this->queue_state[flow_index][token_index] = egress_link::WAITING;
 						}
 						else{
 							std::cerr << "Queue state in flows not configured properly!!\nIgnoring the reservation\n";

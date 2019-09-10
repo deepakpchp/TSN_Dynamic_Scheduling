@@ -1,26 +1,35 @@
 #include <ds_utils.h>
 #include <ds_scheduler.h>
 #include <ds_node.h>
-#include <ds_link.h>
+#include <ds_egress_link.h>
 #include <ds_flow.h>
 #include <ds_route.h>
 #include <ds_config_reader.h>
 #include <ds_notification_handler.h>
+#include <unistd.h> 
+#include <string.h>
+#include <fstream>
+
+#define _BSD_SOURCE
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 
 
 using namespace std;
 
 node** node_list;
 flow** flow_list;
-extern link* link_list[];
+extern egress_link* link_list[];
 extern int num_of_links;
 
-link*** conn_link_matrix;
+egress_link*** conn_link_matrix;
 int** conn_matrix; 
 int g_num_of_nodes = 0;
 int g_num_of_flows = 0;
 
-int link::id_link = 0;
+int egress_link::id_link = 0;
 int flow::id_flow = 0;
 
 int read_and_configure_nodes(configuration* config);
@@ -32,11 +41,14 @@ void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled);
 void print_conn_link_matrix_details(configuration* config_p);
 int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** route, 
 		int route_length[]);
-link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete);
+egress_link*  get_link_to_detele_in_cm(int* route, int route_length, egress_link* link_not_to_delete);
 void rank_flows(int** route, int* route_length, int num_of_paths);
 int delete_node(int node_id);
 flow* get_flow_ptr_from_id(int flow_id);
 int delete_flow(int flow_index);
+int dynamic_scheduling();
+int process_notification();
+void cleanup();
 
 
 /***************************************************************************************************
@@ -80,11 +92,11 @@ int read_and_configure_nodes(configuration* config){
 	config->read_node_config();
 	
 	g_num_of_nodes = config->get_num_of_nodes();
-	conn_link_matrix = new link**[config->get_num_of_nodes()];
+	conn_link_matrix = new egress_link**[config->get_num_of_nodes()];
 	conn_matrix = new int*[config->get_num_of_nodes()];
 
 	for (int index = 0; index < config->get_num_of_nodes(); index++){
-		conn_link_matrix[index] = new link*[config->get_num_of_nodes()];
+		conn_link_matrix[index] = new egress_link*[config->get_num_of_nodes()];
 		conn_matrix[index] = new int[config->get_num_of_nodes()];
 	}
 	
@@ -156,7 +168,7 @@ int read_and_configure_flows(configuration* config){
 			int reservation_length = config->get_reservation_length(index);
 			int* route_nodes = config->get_route(index);
 			int link_src_node_id = src_node_id;
-			link::queue_reservation_state* state = config->get_queue_state(index);
+			egress_link::queue_reservation_state* state = config->get_queue_state(index);
 
 			int* route_links = new int[reservation_length];
 
@@ -173,7 +185,7 @@ int read_and_configure_flows(configuration* config){
 					link_src_node_id = src_node_id;
 
 				}
-				else if (state[route_index] == link::OPEN){
+				else if (state[route_index] == egress_link::OPEN){
 					link_src_node_id = route_nodes[route_index];
 				}
 			}
@@ -222,6 +234,9 @@ Description:
 Return:
 ***************************************************************************************************/
 int delete_flow(int flow_index){
+	if (nullptr == flow_list[flow_index]){
+		return 0;
+	}
 	flow_list[flow_index]->remove_route_and_queue_assignment(flow::DELETE_FLOW);
 	delete(flow_list[flow_index]);
 	return 0;
@@ -245,7 +260,7 @@ void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_be_scheduled){
 	/* 3) TODO */
 	for (int r_index=0; r_index < g_num_of_nodes; r_index++){
 		for (int c_index=0; c_index < g_num_of_nodes; c_index++){
-			link* link_p = conn_link_matrix[r_index][c_index];
+			egress_link* link_p = conn_link_matrix[r_index][c_index];
 
 			if(NULL ==  conn_link_matrix[r_index][c_index]){
 				tmp_conn_matrix[r_index][c_index] = 0;
@@ -292,9 +307,9 @@ Description: During prcess of route discovery, new route is discovered by removi
 
 Return: pointer to the link to be deleted from the route
 ***************************************************************************************************/
-link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_delete){
+egress_link*  get_link_to_detele_in_cm(int* route, int route_length, egress_link* link_not_to_delete){
 	
-	link* tmp_link[route_length] = {NULL};
+	egress_link* tmp_link[route_length] = {NULL};
 	int num_of_links = 0;
 
 	for (int index = 0; index < route_length-1; index++){
@@ -315,7 +330,7 @@ link*  get_link_to_detele_in_cm(int* route, int route_length, link* link_not_to_
 		
 	}
 
-	link* ret_link = NULL;
+	egress_link* ret_link = NULL;
 	for (int index = 0; index < num_of_links; index++){
 		if (NULL == ret_link && tmp_link[index] != link_not_to_delete){
 			ret_link = tmp_link[index];
@@ -352,8 +367,8 @@ int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** k_pat
 
 	int src_node_id = -1;
 	int dst_node_id = -1; 
-	link* link_not_to_delete = NULL;
-	link* link_to_delete = NULL;;
+	egress_link* link_not_to_delete = NULL;
+	egress_link* link_to_delete = NULL;;
 	for (int index = 0; index < K_SHORTEST_PATH; index++){
 		int ret_val = router.get_route(conn_matrix, src_id, dst_id, &(*k_paths)[index]);
 		if (ret_val <= 0){
@@ -491,7 +506,7 @@ class:
 Function Name: rank_flows
 
 Description: This functions will sort the routes based on the ranks calculated using various 
-			 attributes of the route(path) such as average load on the links along the path, 
+			 attributes of the route(path) such as average load on the egress_links along the path, 
 			 route length etc. 
 
 Return: None
@@ -509,7 +524,7 @@ void rank_flows(int** route, int* route_length, int num_of_routes){
 	
 			int src_node_index = route[route_index][node_index];
 			int dst_node_index = route[route_index][node_index+1];
-			link* link_p = conn_link_matrix[src_node_index][dst_node_index];
+			egress_link* link_p = conn_link_matrix[src_node_index][dst_node_index];
 
 			float open_slot_count = (float)link_p->get_open_slots_count();
 			float wait_slot_count = (float)link_p->get_wait_slots_count();
@@ -589,7 +604,7 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 
 	/*Try to perform reservation on all the links along the given route*/
 	for (int node_index = 0; node_index < (route_length - 1); node_index++){
-		link* link_p = conn_link_matrix[route[node_index]][route[node_index+1]];
+		egress_link* link_p = conn_link_matrix[route[node_index]][route[node_index+1]];
 
 		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
 			old_flow_transmition_slot[node_index][period_index] 
@@ -627,7 +642,7 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 	 flow and the Gate Control List*/
 	int assigned_time_slot[deadline * size * (HYPER_PERIOD/period)];
 	int queue_assignment[deadline * size * (HYPER_PERIOD/period)];
-	link::queue_reservation_state state[deadline * size * (HYPER_PERIOD/period)];
+	egress_link::queue_reservation_state state[deadline * size * (HYPER_PERIOD/period)];
 	int route_nodes[deadline * size * (HYPER_PERIOD/period)];
 	int reservation_length = 0;
 
@@ -646,7 +661,7 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 				queue_assignment[reservation_length] 
 					= reserved_queue_index[node_index][period_index];
 
-				state[reservation_length] = link::WAITING;
+				state[reservation_length] = egress_link::WAITING;
 				reservation_length++;
 			}
 
@@ -664,7 +679,7 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 				queue_assignment[reservation_length] 
 					= reserved_queue_index[node_index][period_index];
 
-				state[reservation_length] = link::OPEN;
+				state[reservation_length] = egress_link::OPEN;
 				reservation_length++;
 			}
 		}
@@ -729,6 +744,213 @@ flow* get_flow_ptr_from_id(int flow_id){
 
 	//ERROR("Trying to retrive the flow with flow_id:"<<flow_id<<" which doesnt exist.");
 	return NULL;
+}
+
+/***************************************************************************************************
+TODO
+class: 
+Function Name: dynamic_scheduling 
+
+Description: This function will run in a infinite loop. It listens for tcp connections on the 
+			 configured port. On receiving a connections, it accepts the connection and receive the
+			 notification and writes it into to a temp file notification.txt. Then it calls the 
+			 notification handler to process the notification. Once that is done it does some 
+			 cleanup and returns to listning to new connections.
+
+Return: This function will run till a stop request is received. On receiving stop request, cleanup 
+		is done and it eill return.
+***************************************************************************************************/
+int dynamic_scheduling(){
+#if 0
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		delete_flow(index);
+	}
+#endif
+
+	int port = 8080;
+	int server_fd, new_socket, valread; 
+	struct sockaddr_in address; 
+	//    int opt = 1; 
+	int addrlen = sizeof(address); 
+	char buffer[FILE_READ_BUFFER_SUZE] = {0}; 
+
+	/*Creating socket file descriptor*/
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
+	{ 
+		perror("socket failed"); 
+		exit(EXIT_FAILURE); 
+	} 
+
+	address.sin_family = AF_INET; 
+	address.sin_addr.s_addr = INADDR_ANY; 
+	address.sin_port = htons( port ); 
+
+	if (bind(server_fd, (struct sockaddr *)&address,  
+				sizeof(address))<0) 
+	{ 
+		perror("bind failed"); 
+		exit(EXIT_FAILURE); 
+	} 
+
+
+	while(1){
+		if (listen(server_fd, 3) < 0) 
+		{ 
+			perror("listen"); 
+			exit(EXIT_FAILURE); 
+		} 
+		if ((new_socket = accept(server_fd, (struct sockaddr *)&address,  
+						(socklen_t*)&addrlen))<0){ 
+			perror("accept"); 
+			exit(EXIT_FAILURE); 
+		}
+	
+		char *connected_ip = inet_ntoa(address.sin_addr);
+
+		const char* notification_file_name = "notification.txt";
+		if(check_if_file_exist(notification_file_name)){
+			if( remove( notification_file_name) != 0 ){
+				perror( "Error deleting file" );
+				FATAL("Cleanup Error!!! Notification sortage file found but unnable to delete");
+			}
+		}
+
+		std::ofstream myFile;
+		myFile.open(notification_file_name);
+
+		while (1){
+			memset(buffer,0, FILE_READ_BUFFER_SUZE);
+			valread = read( new_socket , buffer, FILE_READ_BUFFER_SUZE); 
+			if (0 >= valread){
+				std::cout<<"Received junk from notifier\n";
+				perror("Receive");
+				break;
+			}
+			myFile<<buffer;
+
+			char *output = NULL;
+			output = strstr (buffer, "EOF");
+			if(output) {
+				break;
+			}
+			output = strstr (buffer, "STOP_REQUEST");
+			if(output) {
+				int ret_val = 0;
+				const char *response_msg = "Disconnect"; 
+				ret_val = send(new_socket , response_msg , strlen(response_msg) , 0 ); 
+
+				if (-1 == ret_val){
+					std::cout<<"Sending error message failed\n";
+					perror("Send");
+				}
+
+				close(new_socket);
+				if(check_if_file_exist(notification_file_name)){
+					if( remove( notification_file_name) != 0 )
+						perror( "Error deleting file" );
+				}
+				cleanup();
+				std::cout<<"STOP_REQUEST received. Stopping dynamic scheduling gracefully\n";
+				return SUCCESS;
+			}
+		}
+
+		myFile.close();
+
+		int ret_val = 0;
+		const char *response_msg = "Disconnect"; 
+		ret_val = send(new_socket , response_msg , strlen(response_msg) , 0 ); 
+
+		if (-1 == ret_val){
+			std::cout<<"Sending error message failed\n";
+			perror("Send");
+		}
+
+		close(new_socket);
+
+		std::cout<<"New notification received from IP:"<<connected_ip<<" Processing the same\n";
+		process_notification();
+		if(check_if_file_exist(notification_file_name)){
+			if( remove( notification_file_name) != 0 )
+				perror( "Error deleting file" );
+			else
+				puts( "File successfully deleted" );
+		}
+
+	}
+	printf("Exiting \n");
+
+	return 0; 
+
+}       
+
+/***************************************************************************************************
+TODO
+class: 
+Function Name: 
+
+Description: 
+
+Return:
+***************************************************************************************************/
+int process_notification(){
+	notification_handler notification_handler_obj;
+	notification_handler_obj.read_modification_request();
+	notification_handler_obj.print();
+	notification_handler_obj.process_notification();
+	std::vector<flow*> flows_to_schedule;
+
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (nullptr == flow_list[index]){
+			continue;
+		}
+		if(flow::SCHEDULED != flow_list[index]->get_reservation_status() &&
+				flow::DELETE_FLOW != flow_list[index]->get_reservation_status()){
+			flows_to_schedule.push_back( flow_list[index]);
+		}
+	}
+
+	for (unsigned int index = 0; index < flows_to_schedule.size(); index++){
+
+		std::cout<<"Flow to schedule id:"<<flows_to_schedule[index]->get_flow_id()<<"\n";
+
+		int ret_val = 0;
+		ret_val = schedule_flow(flows_to_schedule[index]->get_flow_id());
+		if (SUCCESS != ret_val){
+			ERROR("Unnable to schedule the below mentioned flow\n");
+			flows_to_schedule[index]->print();
+		}
+		else {
+			INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
+//			flows_to_schedule[index]->print();
+		}
+	}
+
+	for(unsigned int index = 0; index < flows_to_schedule.size(); index++){
+		if (NULL != flow_list[index]){
+			flows_to_schedule[index]->print();
+		}
+	}
+	for(int index = 0; index < g_num_of_nodes; index++){
+		if (NULL != node_list[index]){
+			node_list[index]->print();
+		}
+	}
+
+	return SUCCESS;
+}
+
+/***************************************************************************************************
+class: 
+Function Name: cleanup() 
+
+Description: This function is called before the Dynamic scheduling is called to release all the 
+			 Dynamically allocated memory and release all the resource allocated for the binary
+
+Return:
+***************************************************************************************************/
+void cleanup(){
+	std::cout<<"Cleanup finished\n";
 }
 
 /***************************************************************************************************
@@ -838,47 +1060,20 @@ int main(){
 	}
 	//	delete_link();
 #endif
-    notification_handler notification_handler_obj;
-    notification_handler_obj.read_modification_request();
-    notification_handler_obj.print();
-	notification_handler_obj.process_notification();
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
+
+	std::cout<<"Initial Configurations completed.\n";
+	std::cout<<"\n#############################################################################\n";
+	std::cout<<"#############################################################################\n\n";
+	std::cout<<"Starting Dynamic Scheduling Mode\n";
+
+	int ret_val = -1;
+	ret_val = dynamic_scheduling();
+
+	if (FAILURE == ret_val){
+		ERROR("Something went wrong in Dynamic scheduling");
 	}
 
-	std::vector<flow*> flows_to_schedule;
-	
-	for (int index = 0; index < MAX_NUM_FLOWS; index++){
-		if (nullptr == flow_list[index]){
-			continue;
-		}
-		if(flow::SCHEDULED != flow_list[index]->get_reservation_status() && 
-				flow::DELETE_FLOW != flow_list[index]->get_reservation_status()){
-			flows_to_schedule.push_back( flow_list[index]);
-		}
-	}
-
-	for (unsigned int index = 0; index < flows_to_schedule.size(); index++){
-		std::cout<<"Flow to schedule id:"<<flows_to_schedule[index]->get_flow_id()<<"\n";
-		int ret_val = 0;
-		ret_val = schedule_flow(flows_to_schedule[index]->get_flow_id());
-		if (SUCCESS != ret_val){
-			ERROR("Unnable to schedule the below mentioned flow\n");
-			flows_to_schedule[index]->print();
-			cout<<"#################\n";
-		}
-		else {
-			INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
-							flows_to_schedule[index]->print();
-		}
-	}
-	return 0;
+	std::cout<<"Dynamic scheduling Stopped\n";
+	return SUCCESS;
 }
 

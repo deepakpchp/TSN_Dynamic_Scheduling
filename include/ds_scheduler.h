@@ -2,5 +2,6 @@
 #define DS_SCHEDULER_H
 
 #define K_SHORTEST_PATH 3
+#define FILE_READ_BUFFER_SUZE 100
 
 #endif

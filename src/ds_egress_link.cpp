@@ -1,60 +1,60 @@
 #include <ds_utils.h>
 #include <ds_node.h>
-#include <ds_link.h>
+#include <ds_egress_link.h>
 #include <ds_flow.h>
 
 extern node** node_list;
 extern flow* get_flow_ptr_from_id(int flow_id);
-extern link*** conn_link_matrix;
+extern egress_link*** conn_link_matrix;
 extern int** conn_matrix;
-extern link* link_list[MAX_NUM_LINKS];
+extern egress_link* link_list[MAX_NUM_LINKS];
 
-void link::set_link_id(int link_id){
+void egress_link::set_link_id(int link_id){
 	this->link_id = link_id;
 }
-int link::get_link_id(){
+int egress_link::get_link_id(){
 	return this->link_id;
 }
-void link::set_src_node_id(int src_node_id){
+void egress_link::set_src_node_id(int src_node_id){
 	this->src_node_id = src_node_id;
 }
-int link::get_src_node_id(){
+int egress_link::get_src_node_id(){
 	return this->src_node_id;
 }
 
-int link::get_open_slots_count(){
+int egress_link::get_open_slots_count(){
 	return this->open_slots_count;
 }
 
-int link::get_wait_slots_count(){
+int egress_link::get_wait_slots_count(){
 	return this->wait_slots_count;
 }
 
-void link::set_dst_node_id(int dst_node_id){
+void egress_link::set_dst_node_id(int dst_node_id){
 	this->dst_node_id = dst_node_id;
 }
-int link::get_dst_node_id(){
+int egress_link::get_dst_node_id(){
 	return this->dst_node_id;
 }
 
-void link::set_gcl(int* gcl, int time_slot){
+void egress_link::set_gcl(int* gcl, int time_slot){
 	for(int index = 0; index < QUEUES_PER_PORT; index++){
 		this->gcl[time_slot][index] = gcl[index];
 	}
 }
-int** link::get_gcl(){
+int** egress_link::get_gcl(){
 	return this->gcl;
 }
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: constructor
 
-Description: Constructor function for the class link. 
+Description: Constructor function for the class egress_link. 
 
 Return: None
 ***************************************************************************************************/
-link::link(int src_node_id, int dst_node_id){
+egress_link::egress_link(int src_node_id, int dst_node_id){
 	this->link_id = this->id_link++;
 	this->src_node_id = src_node_id;
 	this->dst_node_id = dst_node_id;
@@ -71,14 +71,14 @@ link::link(int src_node_id, int dst_node_id){
 }
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: destructor
 
-Description: destructor function for the class link. 
+Description: destructor function for the class egress_link. 
 
 Return: None
 ***************************************************************************************************/
-link::~link(){
+egress_link::~egress_link(){
 	int* flow_ids = NULL;
 	int num_of_flows =  this->get_passing_flow_ids(&flow_ids);
 	for (int index = 0; index < num_of_flows; index++){
@@ -109,17 +109,17 @@ link::~link(){
 	delete(flow_ids);
 }
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: 
 
 Description: This function will assign the route_queue_assignment and queue state for the respective
-			 time slot on the links. This funcion will also update the flow id's of the flows 
-			 passing through the link.
+			 time slot on the egress_links. This funcion will also update the flow id's of the flows 
+			 passing through the egress_link.
 
 Return: None
 ***************************************************************************************************/
-void link::update_gcl(int time_slot, int route_queue_assignment, int flow_id, 
-		link::queue_reservation_state state){
+void egress_link::update_gcl(int time_slot, int route_queue_assignment, int flow_id, 
+		egress_link::queue_reservation_state state){
 	if (time_slot >= HYPER_PERIOD){
 		FATAL("Invalid Time Slot reservation for flow:"<<flow_id<<".\nError link id:"
 			<<this->get_link_id()<<" time_slot:"<<time_slot<< " route_queue_assignment:"
@@ -131,16 +131,16 @@ void link::update_gcl(int time_slot, int route_queue_assignment, int flow_id,
 				<<" time_slot: "<<time_slot<< " route_queue_assignment: "<<route_queue_assignment
 				<<" current state: "<<this->gcl[time_slot][route_queue_assignment]);
 		}
-		if(link::OPEN == state){
+		if(egress_link::OPEN == state){
 			this->open_slots_count--;
 			this->slot_transmission_availablity[time_slot] = false;
 			this->add_passing_flow_to_list(flow_id);
 		}
-		else if (link::WAITING == state){
+		else if (egress_link::WAITING == state){
 			this->wait_slots_count--;
 			this->add_passing_flow_to_list(flow_id);
 		}
-		else if (link::FREE == state){
+		else if (egress_link::FREE == state){
 			int ret_val = 0;
 			ret_val = this->delete_passing_flow_from_list(flow_id);
 			if(SUCCESS != ret_val){
@@ -148,11 +148,11 @@ void link::update_gcl(int time_slot, int route_queue_assignment, int flow_id,
 					<<"link id:"<<this->get_link_id()<<" invalid flow id to delete:"<<flow_id);
 			}
 
-			if(link::OPEN == this->gcl[time_slot][route_queue_assignment]){
+			if(egress_link::OPEN == this->gcl[time_slot][route_queue_assignment]){
 				this->open_slots_count++;
 				this->slot_transmission_availablity[time_slot] = true;
 			}
-			else if (link::WAITING == this->gcl[time_slot][route_queue_assignment]){
+			else if (egress_link::WAITING == this->gcl[time_slot][route_queue_assignment]){
 				this->wait_slots_count++;
 			}
 		}
@@ -174,16 +174,16 @@ void link::update_gcl(int time_slot, int route_queue_assignment, int flow_id,
 
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: do_slot_allocation
 
-Description: For a given link, this function will try to allocate the slots of size "size" and for 
+Description: For a given egress_link, this function will try to allocate the slots of size "size" and for 
 			 every cycle of lenght "period" from a given time slot in "flow_transmition_slot" for 
 			 each period.
 
 Return: 0 - Successful, 1 Failure
 ***************************************************************************************************/
-int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_index, 
+int egress_link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_index, 
 		int size, int period, int deadline){
 	
 	/*Sanity check to see if the HYPERPERIOD is divisible by period*/
@@ -210,7 +210,7 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 
 				int time_index_t = time_index % HYPER_PERIOD;
 				/*If the time slot is not free then this queue cannot be used */
-				if (link::FREE != this->gcl[time_index_t][queue_index]){
+				if (egress_link::FREE != this->gcl[time_index_t][queue_index]){
 					is_curr_queue_free = false;
 					break;
 				}
@@ -226,7 +226,7 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 					for (int size_index = 1; size_index < size; size_index++){
 
 						int time_slot_index = (time_index_t + size_index) % HYPER_PERIOD;
-						if (link::FREE != this->gcl[time_slot_index][queue_index]){
+						if (egress_link::FREE != this->gcl[time_slot_index][queue_index]){
 							is_curr_queue_free = false;
 							break;
 						}
@@ -276,15 +276,15 @@ int link::do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_ind
 
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: add_passing_flow_to_list
 
 Description: this function will add the flow id to the list of passing flows though calling link obj
 
 Return: None
 ***************************************************************************************************/
-void link::add_passing_flow_to_list(int flow_id){
-	/*Add the flow to the list of passing flows on the link only if it doesnt already exist*/
+void egress_link::add_passing_flow_to_list(int flow_id){
+	/*Add the flow to the list of passing flows on the egress_link only if it doesnt already exist*/
 	this->passing_flow_list.add_no_duplicate(flow_id);
 	node* src_node = node_list[this->get_src_node_id()];
 	node* dst_node = node_list[this->get_dst_node_id()];
@@ -294,15 +294,15 @@ void link::add_passing_flow_to_list(int flow_id){
 }
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: delete_passing_flow_from_list
 
 Description: this function will delete the flow id from the list of passing flows though 
-			 calling link obj
+			 calling egress_link obj
 
 Return: 0 - Successful, 1 Failure
 ***************************************************************************************************/
-int link::delete_passing_flow_from_list(int flow_id){
+int egress_link::delete_passing_flow_from_list(int flow_id){
 	node* src_node = node_list[this->get_src_node_id()];
 	node* dst_node = node_list[this->get_dst_node_id()];
 
@@ -314,25 +314,25 @@ int link::delete_passing_flow_from_list(int flow_id){
 
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: get_passing_flow_count
 
-Description: Returns number of flows passing through this link
+Description: Returns number of flows passing through this egress_link
 
 Return: 0 - Successful, 1 Failure
 ***************************************************************************************************/
-int link::get_passing_flow_count(){
+int egress_link::get_passing_flow_count(){
 	return this->passing_flow_list.get_count();
 }
 
 /***************************************************************************************************
-class: link
+class: egress_link
 Function Name: get_passing_flow_ids
 
-Description: Returns all the flow ids passing through this link in a array passed
+Description: Returns all the flow ids passing through this egress_link in a array passed
 
 Return: 0 - Successful, 1 Failure
 ***************************************************************************************************/
-int link::get_passing_flow_ids(int **passing_flow_ids){
+int egress_link::get_passing_flow_ids(int **passing_flow_ids){
 	return this->passing_flow_list.get_all_data(passing_flow_ids);
 }

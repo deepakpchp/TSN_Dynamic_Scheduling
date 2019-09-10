@@ -1,5 +1,5 @@
-#ifndef DS_LINK_H
-#define DS_LINK_H
+#ifndef DS_EGRESS_LINK_H
+#define DS_EGRESS_LINK_H
 #include <ds_utils.h>
 
 #define HYPER_PERIOD 8
@@ -7,7 +7,7 @@
 #define GCL_INIT 0x1F
 #define NUM_OF_QUEUES_FOR_TT 3
 
-class link{
+class egress_link{
 	private:
 		int link_id;
 		int src_node_id;
@@ -25,8 +25,8 @@ class link{
 			FREE
 		};
 		static int id_link;
-		link(int, int);
-		~link();
+		egress_link(int, int);
+		~egress_link();
 
 		void set_link_id(int link_id);
 		void set_src_node_id(int src_node_id);

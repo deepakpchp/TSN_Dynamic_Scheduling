@@ -6,7 +6,7 @@ BIN_PATH = $(PWD)
 SRC_PATH = $(PWD)/../src
 OBJ_FILES = ds_scheduler.o
 OBJ_FILES += ds_node.o
-OBJ_FILES += ds_link.o
+OBJ_FILES += ds_egress_link.o
 OBJ_FILES += ds_flow.o
 OBJ_FILES += ds_config_reader.o
 OBJ_FILES += ds_route.o
@@ -31,9 +31,9 @@ ds_node.o:  $(SRC_PATH)/ds_node.cpp
 	@echo "compiling $@"
 	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_node.cpp -o $(OBJ_PATH)/ds_node.o -I $(INCLUDE_PATH)
 
-ds_link.o:  $(SRC_PATH)/ds_link.cpp 
+ds_egress_link.o:  $(SRC_PATH)/ds_egress_link.cpp 
 	@echo "compiling $@"
-	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_link.cpp -o $(OBJ_PATH)/ds_link.o -I $(INCLUDE_PATH)
+	@$(CC) $(CFLAGS) -c $(SRC_PATH)/ds_egress_link.cpp -o $(OBJ_PATH)/ds_egress_link.o -I $(INCLUDE_PATH)
 
 ds_flow.o:  $(SRC_PATH)/ds_flow.cpp 
 	@echo "compiling $@"

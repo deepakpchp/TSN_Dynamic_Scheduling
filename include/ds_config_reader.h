@@ -1,5 +1,5 @@
 #include <ds_node.h>
-#include <ds_link.h>
+#include <ds_egress_link.h>
 #include <ds_flow.h>
 #include <string>
 #include <vector>
@@ -21,7 +21,7 @@ class configuration{
 		int** assigned_time_slot;
 		int** route;
 		int** route_queue_assignment;
-		link::queue_reservation_state** queue_state;
+		egress_link::queue_reservation_state** queue_state;
 		int* reservation_length;
 
 
@@ -44,7 +44,7 @@ class configuration{
 		int* get_assigned_time_slot(int index);
 		int* get_route(int index);
 		int* get_route_queue_assignment(int index);
-		link::queue_reservation_state* get_queue_state(int index);
+		egress_link::queue_reservation_state* get_queue_state(int index);
 		int get_reservation_length(int index);
 
 };

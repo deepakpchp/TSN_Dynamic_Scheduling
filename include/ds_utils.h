@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <sys/stat.h>
 
 #define SUCCESS 0
 #define FAILURE 1
@@ -15,6 +16,10 @@
 					<<std::endl<<std::endl; exit(0)
 
 #define stringify( name ) # name
+inline bool check_if_file_exist (const std::string& name) {
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
+}
 
 void tokenize(std::string const &str, const char delim,
             std::vector<std::string> &out);
