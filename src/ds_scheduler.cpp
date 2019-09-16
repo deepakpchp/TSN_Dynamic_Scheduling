@@ -13,15 +13,107 @@ int g_num_of_flows = 0;
 int egress_link::id_link = 0;
 int flow::id_flow = 0;
 
+/***************************************************************************************************
+class:  
+Function Name: schedule_flow
+
+Description: This function will try to schedule the flow with id flow_id (passed as parameter).
+			 Step1: Generate a new connectivity matrix with only required links.
+			 Step2: Discover k-shortest routes using the new connectivity matrix
+			 Step3: Rank the routes based on various attributes.
+			 Step4: Try to schedule from the best ranked route. If Successful then return otherwise 
+			 		try next ranked route until all the k-paths are exaused. If none of them can be
+					scheduled then return FAILURE
+
+Return: 0 - Successful, 1 Failure 
+***************************************************************************************************/
+int schedule_flow(int flow_id){
+
+	flow* flow_to_schedule = nullptr;
+	for (int index = 0; index < MAX_NUM_FLOWS; index++){
+		if (nullptr == flow_list[index]){
+			continue;
+		}
+		if (flow_id == flow_list[index]->get_flow_id()){
+			flow_to_schedule = flow_list[index];
+            break;
+		}
+	}
+	
+
+	if (nullptr == flow_to_schedule){
+		ERROR("Trying to schedule Flow id:"<<flow_id<<" which doesn't exist");
+		return FAILURE;
+	}
+
+	if (flow::SCHEDULED == flow_to_schedule->get_reservation_status()){
+		INFO("Flow already scheduled");
+		std::cout<<"++++++++++++++++++++++++++++++\n";
+		return SUCCESS;
+	}
+
+	if (flow::DELETE_FLOW == flow_to_schedule->get_reservation_status()){
+		INFO("Trying to schedule a flow which is ment to be deleted");
+		return FAILURE;
+	}
+
+	int** tmp_conn_matrix =  new int*[g_num_of_nodes] ;
+	for (int index = 0; index < g_num_of_nodes; index++){
+		tmp_conn_matrix[index] = new int[g_num_of_nodes];
+	}
+
+	/*Step-1 Generate a temp connectivity matrix*/
+	gen_tmp_conn_matrix(tmp_conn_matrix, flow_to_schedule);
+	int src_node_id = flow_to_schedule->get_src_node_id();
+	int dst_node_id = flow_to_schedule->get_dst_node_id();
+
+	int** k_paths = NULL;
+	int route_length[K_SHORTEST_PATH] = {0};
+
+	int num_of_paths = 0;
+	/*Step-2 Discover the k shortest paths */
+	num_of_paths = get_k_shortest_paths(tmp_conn_matrix, src_node_id, dst_node_id, 
+			&k_paths, route_length);
+
+	/*Step-3 Rank the discoverd paths*/
+	rank_routes(k_paths, route_length, num_of_paths);
+
+	/*Step-4 Perform the reservation*/
+	for (int index = 0; index < num_of_paths; index++){
+		int ret_val = 0;
+#ifndef ENABLE_INVERSE_RESERVATION
+		ret_val = perform_flow_reservation(flow_to_schedule, k_paths[index], route_length[index]);
+#else
+		ret_val = perform_flow_reservation_inverse(flow_to_schedule, k_paths[index], route_length[index]);
+#endif
+		if(SUCCESS == ret_val){
+			for (int tmp_index = index; tmp_index < K_SHORTEST_PATH; tmp_index++){
+				delete(k_paths[tmp_index]);
+
+			}
+			delete(k_paths);
+			return SUCCESS;
+		}
+
+		delete(k_paths[index]);
+	}
+
+	for (int index = num_of_paths; index < K_SHORTEST_PATH; index++){
+		delete(k_paths[index]);
+	}
+
+	delete(k_paths);
+
+	return FAILURE;
+}
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: print_conn_link_matrix_details
 
-Description: 
-
-Return:
+Description: This function will print the connectivity matrix of the all the nodes in the network.
+             This is written for debugging.
+Return: None
 ***************************************************************************************************/
 void print_conn_link_matrix_details(configuration* config_p){
     for (int r_index = 0; r_index < config_p->get_num_of_nodes(); r_index++){
@@ -40,13 +132,13 @@ void print_conn_link_matrix_details(configuration* config_p){
 }
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: read_and_configure_nodes 
 
-Description: 
+Description: This fucntion will read the configuration file and create the nodes and corresponding 
+             links.
 
-Return:
+Return: None
 ***************************************************************************************************/
 int read_and_configure_nodes(configuration* config){
 	config->read_node_config();
@@ -91,13 +183,14 @@ int read_and_configure_nodes(configuration* config){
 }
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: read_and_configure_flows
 
-Description: 
+Description: This function will read the details of the flows from flow.txt, validated them and
+             creates flow objects for all the flows and updates the gcl if the schedule is already
+             available.
 
-Return:
+Return: Return: 0 - Successful, 1 Failure 
 ***************************************************************************************************/
 int read_and_configure_flows(configuration* config){
 	config->read_flow_config();
@@ -162,13 +255,13 @@ int read_and_configure_flows(configuration* config){
 }
 
 /***************************************************************************************************
-TODO
 class: 
 Function Name: 
 
-Description: 
+Description: This function will return the link if of the links connecting the node src_node_id and
+             dst_node_id. If there is no link exist then this will return -1.
 
-Return:
+Return: link_id on Success and -1 on Failure
 ***************************************************************************************************/
 int get_link_id(int src_node_id, int dst_node_id){
 
@@ -185,21 +278,20 @@ int get_link_id(int src_node_id, int dst_node_id){
 }
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: delete_flow 
 
-Description: 
+Description: deletes a flow with index flow_index
 
-Return:
+Return: Return: 0 - Successful, 1 Failure 
 ***************************************************************************************************/
 int delete_flow(int flow_index){
 	if (nullptr == flow_list[flow_index]){
-		return 0;
+		return FAILURE;
 	}
 	flow_list[flow_index]->remove_route_and_queue_assignment(flow::DELETE_FLOW);
 	delete(flow_list[flow_index]);
-	return 0;
+	return SUCCESS;
 }
 
 
@@ -367,100 +459,10 @@ int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** k_pat
 }
 
 
-/***************************************************************************************************
-class:  
-Function Name: schedule_flow
-
-Description: This function will try to schedule the flow with id flow_id (passed as parameter).
-			 Step1: Generate a new connectivity matrix with only required links.
-			 Step2: Discover k-shortest path using the new connectivity matrix
-			 Step3: Rank the flows based on various attributes.
-			 Step4: Try to schedule from the best ranked route. If Successful then return otherwise 
-			 		try next ranked route until all the k-paths are exaused. If none of them can be
-					scheduled then return FAILURE
-
-Return: Return: 0 - Successful, 1 Failure 
-***************************************************************************************************/
-int schedule_flow(int flow_id){
-
-	flow* flow_to_schedule = nullptr;
-	for (int index = 0; index < MAX_NUM_FLOWS; index++){
-		if (nullptr == flow_list[index]){
-			continue;
-		}
-		if (flow_id == flow_list[index]->get_flow_id()){
-			flow_to_schedule = flow_list[index];
-		}
-	}
-	
-
-	if (nullptr == flow_to_schedule){
-		ERROR("Trying to schedule Flow id:"<<flow_id<<" which doesn't exist");
-		return FAILURE;
-	}
-
-	if (flow::SCHEDULED == flow_to_schedule->get_reservation_status()){
-		INFO("Flow already scheduled");
-		std::cout<<"++++++++++++++++++++++++++++++\n";
-		return SUCCESS;
-	}
-
-	if (flow::DELETE_FLOW == flow_to_schedule->get_reservation_status()){
-		INFO("Trying to schedule a flow which is ment to be deleted");
-		return FAILURE;
-	}
-
-	int** tmp_conn_matrix =  new int*[g_num_of_nodes] ;
-	for (int index = 0; index < g_num_of_nodes; index++){
-		tmp_conn_matrix[index] = new int[g_num_of_nodes];
-	}
-
-	/*Step-1 Generate a temp connectivity matrix*/
-	gen_tmp_conn_matrix(tmp_conn_matrix, flow_to_schedule);
-	int src_node_id = flow_to_schedule->get_src_node_id();
-	int dst_node_id = flow_to_schedule->get_dst_node_id();
-
-	int** k_paths = NULL;
-	int route_length[K_SHORTEST_PATH] = {0};
-
-	int num_of_paths = 0;
-	/*Step-2 Discover the k shortest paths */
-	num_of_paths = get_k_shortest_paths(tmp_conn_matrix, src_node_id, dst_node_id, 
-			&k_paths, route_length);
-
-	/*Step-3 Rank the discoverd paths*/
-	rank_flows(k_paths, route_length, num_of_paths);
-
-	/*Step-4 Perform the reservation*/
-	for (int index = 0; index < num_of_paths; index++){
-		int ret_val = 0;
-//		ret_val = perform_flow_reservation(flow_to_schedule, k_paths[index], route_length[index]);
-		ret_val = perform_flow_reservation_inverse(flow_to_schedule, k_paths[index], route_length[index]);
-		if(SUCCESS == ret_val){
-			for (int tmp_index = index; tmp_index < K_SHORTEST_PATH; tmp_index++){
-				delete(k_paths[tmp_index]);
-
-			}
-			delete(k_paths);
-			return SUCCESS;
-		}
-
-		delete(k_paths[index]);
-	}
-
-	for (int index = num_of_paths; index < K_SHORTEST_PATH; index++){
-		delete(k_paths[index]);
-	}
-
-	delete(k_paths);
-
-	return FAILURE;
-}
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: rank_flows
+Function Name: rank_routes
 
 Description: This functions will sort the routes based on the ranks calculated using various 
 			 attributes of the route(path) such as average load on the egress_links along the path, 
@@ -468,7 +470,7 @@ Description: This functions will sort the routes based on the ranks calculated u
 
 Return: None
 ***************************************************************************************************/
-void rank_flows(int** route, int* route_length, int num_of_routes){
+void rank_routes(int** route, int* route_length, int num_of_routes){
 
 	float rank[num_of_routes];
 	float avg_open_slots[num_of_routes] = {0.0};
@@ -554,7 +556,6 @@ int perform_flow_reservation_inverse(flow* flow, int* route, int route_length){
 	/*To store the queue assignment on each link for each period*/
 	int reserved_queue_index[route_length-1][HYPER_PERIOD/period];
 	int* flow_transmition_slot = new int[HYPER_PERIOD/period];
-	int old_flow_transmition_slot[route_length-1][HYPER_PERIOD/period];
 
 	/*Start from the end of deadline and allocate in reverse order*/
 	for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
@@ -565,12 +566,7 @@ int perform_flow_reservation_inverse(flow* flow, int* route, int route_length){
 	for (int node_index = (route_length - 2); node_index >= 0 ; node_index--){
 		egress_link* link_p = conn_link_matrix[route[node_index]][route[node_index+1]];
 
-		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
-			old_flow_transmition_slot[node_index][period_index] 
-				= flow_transmition_slot[period_index];
-		}
-		int ret_val;
-
+		int ret_val = -1;
 		/*Perform the reservation on the link*/
 		ret_val = link_p->do_slot_allocation_inverse(flow_transmition_slot, 
 				reserved_queue_index[node_index], size, period, deadline);
@@ -598,27 +594,32 @@ int perform_flow_reservation_inverse(flow* flow, int* route, int route_length){
 
 		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
 			slot_reservation_detail[node_index][period_index] = (flow_transmition_slot[period_index]
-																- (size - 2)) % HYPER_PERIOD;
+																- (size - 2));
 		}
 		
 	}
 
 	/*Once the reservation on all the links along the route is successful, update the corresponding 
 	 flow and the Gate Control List*/
-	int assigned_time_slot[deadline * size * (HYPER_PERIOD/period)];
-	int queue_assignment[deadline * size * (HYPER_PERIOD/period)];
+	int assigned_time_slot[deadline * size * (HYPER_PERIOD/period)] = {-1};
+	int queue_assignment[deadline * size * (HYPER_PERIOD/period)] = {-1};
 	egress_link::queue_reservation_state state[deadline * size * (HYPER_PERIOD/period)];
-	int route_nodes[deadline * size * (HYPER_PERIOD/period)];
+	int route_nodes[deadline * size * (HYPER_PERIOD/period)] = {-1};
 	int reservation_length = 0;
 
 
 	for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
 		for (int node_index = 0; node_index <  (route_length - 1); node_index++){
-			for (int index = 1; index < slot_reservation_detail[node_index][period_index] 
-					- old_flow_transmition_slot[node_index][period_index]; index++){
+            int waiting_time = 0;
+            if (0 != node_index){
+                waiting_time = slot_reservation_detail[node_index][period_index] -
+                                    slot_reservation_detail[node_index - 1][period_index] - 1;
+            }
+
+			for (int index = waiting_time; index > 0; index--){
 
 				assigned_time_slot[reservation_length] = 
-					(old_flow_transmition_slot[node_index][period_index] + index -1) % HYPER_PERIOD;
+					(slot_reservation_detail[node_index][period_index] - index) % HYPER_PERIOD;
 
 				route_nodes[reservation_length] 
 					= get_link_id(route[node_index], route[node_index+1]);
@@ -628,7 +629,7 @@ int perform_flow_reservation_inverse(flow* flow, int* route, int route_length){
 
 				state[reservation_length] = egress_link::WAITING;
 				reservation_length++;
-			}
+            } 
 
 			/*TODO Should all the instance of Transmission be stored in flow or only the first 
 			  instance of the Transmission in each link ?*/
@@ -636,7 +637,7 @@ int perform_flow_reservation_inverse(flow* flow, int* route, int route_length){
 			for(int index = 0; index < size; index++){
 
 				assigned_time_slot[reservation_length] 
-					= (slot_reservation_detail[node_index][period_index] + index -1) % HYPER_PERIOD;
+					= (slot_reservation_detail[node_index][period_index] + index) % HYPER_PERIOD;
 
 				route_nodes[reservation_length] 
 					= get_link_id(route[node_index], route[node_index+1]);
@@ -775,13 +776,12 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 }
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: delete_node 
 
-Description: 
+Description: To delete a node and reservation of all the flows that are passing through the node.
 
-Return:
+Return: Return: 0 - Successful, 1 Failure 
 ***************************************************************************************************/
 
 int delete_node(int node_id){
@@ -808,17 +808,16 @@ int delete_node(int node_id){
 }
 
 /***************************************************************************************************
-TODO
 class: 
 Function Name: get_flow_ptr_from_id 
 
-Description: 
+Description: get the pointer for the flow from flow_id 
 
-Return:
+Return: pointer to the flow on Success or nullptr on Failure
 ***************************************************************************************************/
 flow* get_flow_ptr_from_id(int flow_id){
 	for (int index = 0; index < MAX_NUM_FLOWS; index++){
-		if( NULL != flow_list[index]){
+		if( nullptr != flow_list[index]){
 			if(flow_id == flow_list[index]->get_flow_id()){
 				return flow_list[index];
 			}
@@ -826,11 +825,10 @@ flow* get_flow_ptr_from_id(int flow_id){
 	}
 
 	//ERROR("Trying to retrive the flow with flow_id:"<<flow_id<<" which doesnt exist.");
-	return NULL;
+	return nullptr;
 }
 
 /***************************************************************************************************
-TODO
 class: 
 Function Name: dynamic_scheduling 
 
@@ -963,13 +961,13 @@ int dynamic_scheduling(){
 }       
 
 /***************************************************************************************************
-TODO
 class: 
-Function Name: 
+Function Name: process_notification 
 
-Description: 
+Description: Once the notification is received and are stored in local context, this function is 
+             called to actupon the received notification. 
 
-Return:
+Return: Return: 0 - Successful, 1 Failure 
 ***************************************************************************************************/
 int process_notification(){
 	notification_handler notification_handler_obj;

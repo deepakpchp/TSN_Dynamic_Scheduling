@@ -31,7 +31,7 @@ void print_conn_link_matrix_details(configuration* config_p);
 int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** route, 
 		int route_length[]);
 egress_link*  get_link_to_detele_in_cm(int* route, int route_length, egress_link* link_not_to_delete);
-void rank_flows(int** route, int* route_length, int num_of_paths);
+void rank_routes(int** route, int* route_length, int num_of_paths);
 int delete_node(int node_id);
 flow* get_flow_ptr_from_id(int flow_id);
 int delete_flow(int flow_index);

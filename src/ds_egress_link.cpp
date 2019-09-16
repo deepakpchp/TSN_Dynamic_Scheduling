@@ -227,7 +227,7 @@ int egress_link::do_slot_allocation_inverse(int* flow_transmition_slot, int *res
 					 instance of the flow which will be of length size.*/
 					for (int size_index = 1; size_index < size; size_index++){
 
-						int time_slot_index = (time_index_t - size_index) % HYPER_PERIOD;
+						int time_slot_index = (time_index - size_index) % HYPER_PERIOD;
 						if (egress_link::FREE != this->gcl[time_slot_index][queue_index]){
 							is_curr_queue_free = false;
 							break;
