@@ -1,23 +1,4 @@
-#include <ds_utils.h>
 #include <ds_scheduler.h>
-#include <ds_node.h>
-#include <ds_egress_link.h>
-#include <ds_flow.h>
-#include <ds_route.h>
-#include <ds_config_reader.h>
-#include <ds_notification_handler.h>
-#include <unistd.h> 
-#include <string.h>
-#include <fstream>
-
-#define _BSD_SOURCE
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-
-
-using namespace std;
 
 node** node_list;
 flow** flow_list;
@@ -31,24 +12,6 @@ int g_num_of_flows = 0;
 
 int egress_link::id_link = 0;
 int flow::id_flow = 0;
-
-int read_and_configure_nodes(configuration* config);
-int read_and_configure_flows(configuration* config);
-int get_link_id(int src_node_id, int dst_node_id);
-int schedule_flow(int flow_index);
-int perform_flow_reservation(flow* flow, int* route, int route_length);
-void gen_tmp_conn_matrix(int** tmp_conn_matrix, flow* flow_to_scheduled);
-void print_conn_link_matrix_details(configuration* config_p);
-int get_k_shortest_paths(int** conn_matrix, int src_id, int dst_id, int*** route, 
-		int route_length[]);
-egress_link*  get_link_to_detele_in_cm(int* route, int route_length, egress_link* link_not_to_delete);
-void rank_flows(int** route, int* route_length, int num_of_paths);
-int delete_node(int node_id);
-flow* get_flow_ptr_from_id(int flow_id);
-int delete_flow(int flow_index);
-int dynamic_scheduling();
-int process_notification();
-void cleanup();
 
 
 /***************************************************************************************************
@@ -66,9 +29,6 @@ void print_conn_link_matrix_details(configuration* config_p){
 			if( NULL != conn_link_matrix[r_index][c_index]){
 				int src_id = conn_link_matrix[r_index][c_index]->get_src_node_id();
 				int dst_id = conn_link_matrix[r_index][c_index]->get_dst_node_id();
-//				int open_slots = conn_link_matrix[r_index][c_index]->get_open_slots_count();
-//				int wait_slots = conn_link_matrix[r_index][c_index]->get_wait_slots_count();
-//				cout<<dst_id<<":"<<open_slots<<":"<<wait_slots<<"\t";
 				cout<<src_id<<":"<<dst_id<<"\t";
 			}
 			else{
@@ -439,10 +399,6 @@ int schedule_flow(int flow_id){
 		return FAILURE;
 	}
 
-	//int* route = get_route();
-	// int route[2][5] = {{8, 7, 3, 1, 0},
-	// {9, 7, 3, 5, 6}};
-	
 	if (flow::SCHEDULED == flow_to_schedule->get_reservation_status()){
 		INFO("Flow already scheduled");
 		std::cout<<"++++++++++++++++++++++++++++++\n";
@@ -459,6 +415,7 @@ int schedule_flow(int flow_id){
 		tmp_conn_matrix[index] = new int[g_num_of_nodes];
 	}
 
+	/*Step-1 Generate a temp connectivity matrix*/
 	gen_tmp_conn_matrix(tmp_conn_matrix, flow_to_schedule);
 	int src_node_id = flow_to_schedule->get_src_node_id();
 	int dst_node_id = flow_to_schedule->get_dst_node_id();
@@ -467,18 +424,18 @@ int schedule_flow(int flow_id){
 	int route_length[K_SHORTEST_PATH] = {0};
 
 	int num_of_paths = 0;
-	/*Get the k shortest paths */
+	/*Step-2 Discover the k shortest paths */
 	num_of_paths = get_k_shortest_paths(tmp_conn_matrix, src_node_id, dst_node_id, 
 			&k_paths, route_length);
 
+	/*Step-3 Rank the discoverd paths*/
 	rank_flows(k_paths, route_length, num_of_paths);
-//	for(int index = 0; index < 3; index++){
-//		flow_list[index]->print();
-//	}
-//	cout<<"Num of paths: "<<num_of_paths<<endl;
+
+	/*Step-4 Perform the reservation*/
 	for (int index = 0; index < num_of_paths; index++){
 		int ret_val = 0;
-		ret_val = perform_flow_reservation(flow_to_schedule, k_paths[index], route_length[index]);
+//		ret_val = perform_flow_reservation(flow_to_schedule, k_paths[index], route_length[index]);
+		ret_val = perform_flow_reservation_inverse(flow_to_schedule, k_paths[index], route_length[index]);
 		if(SUCCESS == ret_val){
 			for (int tmp_index = index; tmp_index < K_SHORTEST_PATH; tmp_index++){
 				delete(k_paths[tmp_index]);
@@ -549,15 +506,14 @@ void rank_flows(int** route, int* route_length, int num_of_routes){
 
 	for (int route_index = 0; route_index < num_of_routes; route_index++){
 		for (int node_index = 0; node_index < route_length[route_index] - 1; node_index++){
-//			cout<<route[route_index][node_index]<<"->";
 		}
 
 		rank[route_index] =   (avg_open_slots[route_index]/max_open_slots) * -1
 							+ (avg_wait_slots[route_index]/max_wait_slots) * 2
 							+ (((float)(route_length[0]-1)/(route_length[route_index]- 1))) * 1; 
-//		cout<<rank[route_index]<<endl;
 	}
 #if 1
+	/*Sort the routes based on the ranks calculated in previous step*/
 	for (int i = 0; i < num_of_routes-1; i++){
 		for (int j = i+1; j < num_of_routes; j++){
 			if (rank[i] < rank[j]){
@@ -581,6 +537,127 @@ void rank_flows(int** route, int* route_length, int num_of_routes){
 
 /***************************************************************************************************
 class: 
+Function Name: perform_flow_reservation_inverse
+
+Description: Once the routes are discovered, this method is called to do slot reservation on all
+			 the links throughout the route of the flows.
+
+Return: Return: 0 - Successful, 1 Failure 
+***************************************************************************************************/
+int perform_flow_reservation_inverse(flow* flow, int* route, int route_length){
+	int period = flow->get_period();
+	int size = flow->get_size();
+	int deadline = flow->get_deadline();
+
+	/*To store the transmission time slot on each link for each period*/
+	int slot_reservation_detail[route_length-1][HYPER_PERIOD/period];
+	/*To store the queue assignment on each link for each period*/
+	int reserved_queue_index[route_length-1][HYPER_PERIOD/period];
+	int* flow_transmition_slot = new int[HYPER_PERIOD/period];
+	int old_flow_transmition_slot[route_length-1][HYPER_PERIOD/period];
+
+	/*Start from the end of deadline and allocate in reverse order*/
+	for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+		flow_transmition_slot[period_index] = ((period * (period_index)) + deadline) -1;
+	}
+
+	/*Try to perform reservation on all the links along the given route from the last link*/
+	for (int node_index = (route_length - 2); node_index >= 0 ; node_index--){
+		egress_link* link_p = conn_link_matrix[route[node_index]][route[node_index+1]];
+
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+			old_flow_transmition_slot[node_index][period_index] 
+				= flow_transmition_slot[period_index];
+		}
+		int ret_val;
+
+		/*Perform the reservation on the link*/
+		ret_val = link_p->do_slot_allocation_inverse(flow_transmition_slot, 
+				reserved_queue_index[node_index], size, period, deadline);
+		if (SUCCESS != ret_val){
+			LOG("Unnable to allocate resource on the link:"<<link_p->get_link_id()<<
+				" for the flow: "<<flow->get_flow_id());
+			return FAILURE;
+		}
+
+		/*Check if the start of the flow can be at the begging of the period if the reservation is 
+		  done on remaining links*/
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+
+			int best_case_start_slot  
+				= flow_transmition_slot[period_index] - node_index;
+
+			if(0 > best_case_start_slot){
+				LOG("Unnable to meet the deadline:"<<deadline<<" for the flow:"<<flow->get_flow_id()
+				    <<" best case scenario for the start time was @:"
+					<<best_case_start_slot);
+				return FAILURE;
+
+			}
+		}
+
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+			slot_reservation_detail[node_index][period_index] = (flow_transmition_slot[period_index]
+																- (size - 2)) % HYPER_PERIOD;
+		}
+		
+	}
+
+	/*Once the reservation on all the links along the route is successful, update the corresponding 
+	 flow and the Gate Control List*/
+	int assigned_time_slot[deadline * size * (HYPER_PERIOD/period)];
+	int queue_assignment[deadline * size * (HYPER_PERIOD/period)];
+	egress_link::queue_reservation_state state[deadline * size * (HYPER_PERIOD/period)];
+	int route_nodes[deadline * size * (HYPER_PERIOD/period)];
+	int reservation_length = 0;
+
+
+	for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+		for (int node_index = 0; node_index <  (route_length - 1); node_index++){
+			for (int index = 1; index < slot_reservation_detail[node_index][period_index] 
+					- old_flow_transmition_slot[node_index][period_index]; index++){
+
+				assigned_time_slot[reservation_length] = 
+					(old_flow_transmition_slot[node_index][period_index] + index -1) % HYPER_PERIOD;
+
+				route_nodes[reservation_length] 
+					= get_link_id(route[node_index], route[node_index+1]);
+
+				queue_assignment[reservation_length] 
+					= reserved_queue_index[node_index][period_index];
+
+				state[reservation_length] = egress_link::WAITING;
+				reservation_length++;
+			}
+
+			/*TODO Should all the instance of Transmission be stored in flow or only the first 
+			  instance of the Transmission in each link ?*/
+//			for(int index = 0; index < 1; index++)
+			for(int index = 0; index < size; index++){
+
+				assigned_time_slot[reservation_length] 
+					= (slot_reservation_detail[node_index][period_index] + index -1) % HYPER_PERIOD;
+
+				route_nodes[reservation_length] 
+					= get_link_id(route[node_index], route[node_index+1]);
+
+				queue_assignment[reservation_length] 
+					= reserved_queue_index[node_index][period_index];
+
+				state[reservation_length] = egress_link::OPEN;
+				reservation_length++;
+			}
+		}
+	}
+	
+	flow->assign_route_and_queue(assigned_time_slot
+			, route_nodes, queue_assignment, state, reservation_length);
+
+    return SUCCESS;
+}
+
+/***************************************************************************************************
+class: 
 Function Name: perform_flow_reservation 
 
 Description: Once the routes are discovered, this method is called to do slot reservation on all
@@ -592,8 +669,12 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 	int period = flow->get_period();
 	int size = flow->get_size();
 	int deadline = flow->get_deadline();
-	
+
+	/*Variables to store the details on each link for each period*/
+
+	/*To store the transmission time slot on each link for each period*/
 	int slot_reservation_detail[route_length-1][HYPER_PERIOD/period];
+	/*To store the queue assignment on each link for each period*/
 	int reserved_queue_index[route_length-1][HYPER_PERIOD/period];
 	int* flow_transmition_slot = new int[HYPER_PERIOD/period];
 	int old_flow_transmition_slot[route_length-1][HYPER_PERIOD/period];
@@ -612,9 +693,16 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 		}
 		int ret_val;
 
+		/*Perform the reservation on the link*/
 		ret_val = link_p->do_slot_allocation(flow_transmition_slot, 
 				reserved_queue_index[node_index], size, period, deadline);
-		
+		if (SUCCESS != ret_val){
+			LOG("Unnable to allocate resource on the link:"<<link_p->get_link_id()<<
+				" for the flow: "<<flow->get_flow_id());
+			return FAILURE;
+		}
+
+		/*Check if the deadline can be met after reservation on remaining links*/
 		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
 			int best_case_deadline 
 				= flow_transmition_slot[period_index] + (route_length - 1) - (node_index +1);
@@ -625,11 +713,6 @@ int perform_flow_reservation(flow* flow, int* route, int route_length){
 				return FAILURE;
 
 			}
-		}
-		if (SUCCESS != ret_val){
-			LOG("Unnable to allocate resource on the link:"<<link_p->get_link_id()<<
-				" for the flow: "<<flow->get_flow_id());
-			return FAILURE;
 		}
 
 		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
@@ -761,11 +844,6 @@ Return: This function will run till a stop request is received. On receiving sto
 		is done and it eill return.
 ***************************************************************************************************/
 int dynamic_scheduling(){
-#if 0
-	for (int index = 0; index < MAX_NUM_FLOWS; index++){
-		delete_flow(index);
-	}
-#endif
 
 	int port = 8080;
 	int server_fd, new_socket, valread; 
@@ -996,19 +1074,6 @@ int main(){
 	}
 
 	print_conn_link_matrix_details(&config);
-#if 0
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-#endif
 
 	for(int index = 0; index < MAX_NUM_FLOWS; index++){
 		if (nullptr == flow_list[index]){
@@ -1025,7 +1090,6 @@ int main(){
 			}
 			else {
 				INFO("Successfully scheduled the flow_id: "<<flow_list[index]->get_flow_id());
-				//				flow_list[index]->print();
 			}
 		}
 	}
@@ -1042,24 +1106,6 @@ int main(){
 			node_list[index]->print();
 		}
 	}
-#if 0
-//	delete(link_list[19]);
-//	delete_node(7);
-//	delete(node_list[7]);
-	cout<<endl;
-	for(int index = 0; index < config.get_num_of_flows(); index++){
-		if (NULL != flow_list[index]){
-			flow_list[index]->print();
-		}
-	}
-
-	for(int index = 0; index < config.get_num_of_nodes(); index++){
-		if (NULL != node_list[index]){
-			node_list[index]->print();
-		}
-	}
-	//	delete_link();
-#endif
 
 	std::cout<<"Initial Configurations completed.\n";
 	std::cout<<"\n#############################################################################\n";

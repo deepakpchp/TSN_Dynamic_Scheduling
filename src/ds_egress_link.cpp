@@ -172,6 +172,109 @@ void egress_link::update_gcl(int time_slot, int route_queue_assignment, int flow
 
 }
 
+/***************************************************************************************************
+class: egress_link
+Function Name: do_slot_allocation_inverse
+
+Description: For a given egress_link, this function will try to allocate the slots of size "size" 
+			 and for every cycle of lenght "period" from a given time slot in
+			 "flow_transmition_slot" for each period in reverse order with respect to time slots.
+
+Return: 0 - Successful, 1 Failure
+***************************************************************************************************/
+int egress_link::do_slot_allocation_inverse(int* flow_transmition_slot, int *reserved_queue_index, 
+		int size, int period, int deadline){
+	
+	/*Sanity check to see if the HYPERPERIOD is divisible by period*/
+	if (0 != (HYPER_PERIOD%period)){
+		int hyper_period = HYPER_PERIOD;
+		FATAL("Hyper period:"<<hyper_period<<" is  not divisible by period:"<<period<<std::endl);
+	}
+
+	int lowest_tt_queue =  (QUEUES_PER_PORT - NUM_OF_QUEUES_FOR_TT);
+	
+	/*Try to do reservation from highest TT queue to Lowest TT queue*/
+	for (int  queue_index = QUEUES_PER_PORT-1; queue_index >= lowest_tt_queue; queue_index--){
+		int num_of_succ_reservation = 0;
+		bool is_curr_queue_free = true;
+		int slot_assignment[HYPER_PERIOD/period] = {-1};
+
+		/*For a given queue in queue_index, try to find free slots for all the period */
+		for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+			
+			int start_time_index = flow_transmition_slot[period_index];
+
+			/*Slots should be available for all the frames of the instance of the flow to pass*/
+			int end_time_index = (period_index * period) + (size -1);
+	
+			/*To compensate the roll back */
+			for (int time_index = start_time_index; time_index >= end_time_index; time_index--){
+
+				int time_index_t = time_index % HYPER_PERIOD;
+				/*If the time slot is not free then this queue cannot be used */
+				if (egress_link::FREE != this->gcl[time_index_t][queue_index]){
+					is_curr_queue_free = false;
+					break;
+				}
+
+				bool is_schedulable = true;
+
+				/*Check if this slot is available for transmission or occupied by some other flow*/
+				if(true == this->slot_transmission_availablity[time_index_t]){
+
+					/*If the slot is available for transmission, then check if the consecutive time 
+					 slots of same queue are available for transmission for all the frames of this
+					 instance of the flow which will be of length size.*/
+					for (int size_index = 1; size_index < size; size_index++){
+
+						int time_slot_index = (time_index_t - size_index) % HYPER_PERIOD;
+						if (egress_link::FREE != this->gcl[time_slot_index][queue_index]){
+							is_curr_queue_free = false;
+							break;
+						}
+
+						if(true != this->slot_transmission_availablity[time_slot_index]){
+							is_schedulable = false;
+							break;
+						}
+					}
+
+					if (true == is_curr_queue_free && true == is_schedulable){
+						slot_assignment[period_index] = time_index;
+						reserved_queue_index[period_index] = queue_index;
+						num_of_succ_reservation++;
+						break;
+					}
+				}
+
+				if (false == is_curr_queue_free){
+					break;
+				}
+
+			}
+
+			if (false == is_curr_queue_free){
+				break;
+			}
+
+			/*If unnable to allocate for a period on a queue then it doesn't make sense to continue 
+			 searching for other periods on the same queue*/
+			if (period_index >= num_of_succ_reservation){
+				break;
+			}
+		}
+	
+		if (true == is_curr_queue_free && (num_of_succ_reservation == (HYPER_PERIOD/period))){
+
+			for (int period_index = 0; period_index < (HYPER_PERIOD / period); period_index++){
+				flow_transmition_slot[period_index] = slot_assignment[period_index] - 1;
+			}
+			return SUCCESS;
+		}
+	}
+	LOG("Unnable to Do the reservation");
+	return FAILURE;
+}
 
 /***************************************************************************************************
 class: egress_link

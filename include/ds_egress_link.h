@@ -46,6 +46,8 @@ class egress_link{
 				queue_reservation_state state);
 		int do_slot_allocation(int* flow_transmition_slot, int *reserved_queue_index, 
 				int size, int period, int deadline);
+		int do_slot_allocation_inverse(int* flow_transmition_slot, int *reserved_queue_index, 
+				int size, int period, int deadline);
 		int get_passing_flow_ids(int** flows);
 };
 #endif
